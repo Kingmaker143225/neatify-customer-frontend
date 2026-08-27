@@ -330,16 +330,27 @@ export default function LoginScreen(props: any) {
     }
   };
 
+  // const handleGoogleSignIn = async () => {
+  //   setGoogleLoading(true);
+  //   try {
+  //     await signInWithGoogle();
+  //   } catch (err: any) {
+  //     showAlert({ type: "error", title: "Google Sign-In Failed", message: err.message });
+  //   } finally {
+  //     setGoogleLoading(false);
+  //   }
+  // };
+
   const handleGoogleSignIn = async () => {
-    setGoogleLoading(true);
-    try {
-      await signInWithGoogle();
-    } catch (err: any) {
-      showAlert({ type: "error", title: "Google Sign-In Failed", message: err.message });
-    } finally {
-      setGoogleLoading(false);
-    }
-  };
+  setGoogleLoading(true);
+  try {
+    await signInWithGoogle();
+  } catch (err: any) {
+    showAlert({ type: "error", title: "Google Sign-In Failed", message: err.message });
+  } finally {
+    setGoogleLoading(false);
+  }
+};
 
 
   const handleSendOtp = async () => {

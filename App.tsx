@@ -36,16 +36,11 @@
 //     let hasCheckedOnce = false;
 
 //     // Helper: check DB + Auth completeness
-//     // Returns false and redirects if profile is incomplete
-//     // useNav=true  → reset live navigation (post-mount, e.g. deep links)
-//     // useNav=false → return result so caller can set initialRoute before mount
 //     const checkCompleteness = async (userId: string, useNav = true): Promise<boolean> => {
 //       if (!userId) return true;
 //       try {
-//         // Always fetch fresh user data from server
 //         const { data: { user }, error: userError } = await supabase.auth.getUser();
         
-//         // Handle invalid sessions (e.g. Refresh Token Not Found)
 //         if (userError || !user) {
 //           if (userError?.message?.includes("Refresh Token") || userError?.status === 401) {
 //             console.warn("Session invalid, signing out...");
@@ -60,11 +55,7 @@
 //           .eq("id", user.id)
 //           .maybeSingle();
 
-//         // Profile DB must have all 3 fields
-//         const hasFullProfile =
-//           !!(profile?.full_name && profile?.email && profile?.phone);
-
-//         // Auth must have confirmed email (covers both email and Google users)
+//         const hasFullProfile = !!(profile?.full_name && profile?.email && profile?.phone);
 //         const hasConfirmedIdentity =
 //           !!user.email_confirmed_at ||
 //           !!user.confirmed_at ||
@@ -89,8 +80,7 @@
 //       }
 //     };
 
-//     // 1. Initial Launch Check (cold start / app kill recovery)
-//     // Navigation is NOT mounted yet here, so we set initialRoute instead of resetting nav
+//     // 1. Initial Launch Check
 //     const initApp = async () => {
 //       try {
 //         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
@@ -108,11 +98,9 @@
 
 //         if (session?.user) {
 //           handlePushToken(session.user.id);
-//           // Prevent onAuthStateChange from triggering a second reset immediately after this
 //           hasCheckedOnce = true;
 //         }
         
-//         // LocationAccess is the universal startup screen now
 //         setInitialRoute("LocationAccess");
 //       } catch (err) {
 //         console.error("App init failed:", err);
@@ -123,16 +111,14 @@
 //     };
 //     initApp();
 
-//     // 2. Auth state changes — only handle SIGNED_IN once per session
+//     // 2. Auth state changes
 //     const { data: listener } = supabase.auth.onAuthStateChange(
 //       async (event, session) => {
-//         // Reset skip flag when user signs out (after password reset completes)
 //         if (event === "SIGNED_OUT") {
 //           skipAuthRedirect.current = false;
 //           hasCheckedOnce = false;
 //           return;
 //         }
-//         // Skip auto-redirect during password reset flow
 //         if (skipAuthRedirect.current && event === "SIGNED_IN") {
 //           console.log("Skipping auth redirect (password reset in progress)");
 //           return;
@@ -153,69 +139,247 @@
 //       }
 //     );
 
-//     // 3. Deep link handler
-//     const handleDeepLink = async ({ url }: { url: string }) => {
-//       if (!url) return;
-//       console.log("Deep link received:", url);
+//     // 3. Deep link handler - UPDATED with debugging
+//     // const handleDeepLink = async ({ url }: { url: string }) => {
+//     //   if (!url) return;
+//     //   console.log("🔗🔗🔗 DEEP LINK RECEIVED: 🔗🔗🔗");
+//     //   console.log("Full URL:", url);
+//     //   console.log("URL includes 'google-auth'?:", url.includes("google-auth"));
+//     //   console.log("URL includes '?'?:", url.includes("?"));
+//     //   console.log("URL includes '#'?:", url.includes("#"));
 
-//       if (url.includes("google-auth")) {
-//         const fragment = url.split("#")[1];
-//         if (fragment) {
-//           const params = new URLSearchParams(fragment);
-//           const accessToken = params.get("access_token");
-//           const refreshToken = params.get("refresh_token");
-//           if (accessToken && refreshToken) {
-//             hasCheckedOnce = false;
-//             const { data, error } = await supabase.auth.setSession({
-//               access_token: accessToken,
-//               refresh_token: refreshToken,
-//             });
-//             if (!error && data.user) {
-//               handlePushToken(data.user.id);
-//               const isComplete = await checkCompleteness(data.user.id);
-//               if (isComplete) {
-//                 navigationRef.current?.reset({
-//                   index: 0,
-//                   routes: [{ name: "HomeDrawer" }],
-//                 });
-//               }
-//             }
-//           }
+//     //   // =========================================================
+//     //   // GOOGLE AUTH CALLBACK
+//     //   // =========================================================
+//     //   if (url.includes("google-auth")) {
+//     //     console.log("🔐 Processing Google auth callback...");
+        
+//     //     // Try to get tokens from URL fragment (#)
+//     //     let fragment = url.split("#")[1];
+//     //     console.log("🔐 Fragment:", fragment ? fragment.substring(0, 50) + "..." : "No fragment");
+        
+//     //     if (fragment) {
+//     //       const params = new URLSearchParams(fragment);
+//     //       const accessToken = params.get("access_token");
+//     //       const refreshToken = params.get("refresh_token");
+          
+//     //       console.log("🔐 Access token:", accessToken ? "✅ Present" : "❌ Missing");
+//     //       console.log("🔐 Refresh token:", refreshToken ? "✅ Present" : "❌ Missing");
+          
+//     //       if (accessToken && refreshToken) {
+//     //         console.log("🔐 Setting Supabase session...");
+//     //         hasCheckedOnce = false;
+//     //         const { data, error } = await supabase.auth.setSession({
+//     //           access_token: accessToken,
+//     //           refresh_token: refreshToken,
+//     //         });
+            
+//     //         if (error) {
+//     //           console.error("❌ Session error:", error.message);
+//     //           return;
+//     //         }
+            
+//     //         if (data.user) {
+//     //           console.log("✅ Google sign-in successful for:", data.user.email);
+//     //           handlePushToken(data.user.id);
+//     //           const isComplete = await checkCompleteness(data.user.id);
+//     //           if (isComplete) {
+//     //             navigationRef.current?.reset({
+//     //               index: 0,
+//     //               routes: [{ name: "HomeDrawer" }],
+//     //             });
+//     //           } else {
+//     //             navigationRef.current?.reset({
+//     //               index: 0,
+//     //               routes: [{ name: "CompleteProfile" }],
+//     //             });
+//     //           }
+//     //         }
+//     //       } else {
+//     //         console.warn("⚠️ No tokens found in fragment");
+//     //       }
+//     //     } else {
+//     //       // Try query string as fallback
+//     //       const queryString = url.split("?")[1];
+//     //       console.log("🔐 Query string:", queryString ? queryString.substring(0, 50) + "..." : "No query string");
+          
+//     //       if (queryString) {
+//     //         const params = new URLSearchParams(queryString);
+//     //         const accessToken = params.get("access_token");
+//     //         const refreshToken = params.get("refresh_token");
+            
+//     //         console.log("🔐 Access token (query):", accessToken ? "✅ Present" : "❌ Missing");
+//     //         console.log("🔐 Refresh token (query):", refreshToken ? "✅ Present" : "❌ Missing");
+            
+//     //         if (accessToken && refreshToken) {
+//     //           hasCheckedOnce = false;
+//     //           const { data, error } = await supabase.auth.setSession({
+//     //             access_token: accessToken,
+//     //             refresh_token: refreshToken,
+//     //           });
+              
+//     //           if (!error && data.user) {
+//     //             console.log("✅ Google sign-in successful for:", data.user.email);
+//     //             handlePushToken(data.user.id);
+//     //             const isComplete = await checkCompleteness(data.user.id);
+//     //             if (isComplete) {
+//     //               navigationRef.current?.reset({
+//     //                 index: 0,
+//     //                 routes: [{ name: "HomeDrawer" }],
+//     //               });
+//     //             }
+//     //           }
+//     //         }
+//     //       }
+//     //     }
+//     //     return;
+//     //   }
+
+//     //   // =========================================================
+//     //   // PASSWORD RESET
+//     //   // =========================================================
+//     //   if (url.includes("reset-password") || url.includes("type=recovery")) {
+//     //     skipAuthRedirect.current = true;
+//     //     const searchPart = url.includes("#") ? url.split("#")[1] : url.split("?")[1];
+//     //     if (searchPart) {
+//     //       const params = new URLSearchParams(searchPart);
+//     //       const accessToken = params.get("access_token");
+//     //       const refreshToken = params.get("refresh_token");
+//     //       if (accessToken && refreshToken) {
+//     //         console.log("✅ Reset tokens detected. Navigating to ResetPassword...");
+//     //         setTimeout(() => {
+//     //           navigationRef.current?.reset({
+//     //             index: 0,
+//     //             routes: [
+//     //               {
+//     //                 name: "ResetPassword",
+//     //                 params: {
+//     //                   access_token: accessToken,
+//     //                   refresh_token: refreshToken,
+//     //                 },
+//     //               },
+//     //             ],
+//     //           });
+//     //         }, 800);
+//     //       }
+//     //     }
+//     //   }
+//     // };
+
+//     // 3. Deep link handler - UPDATED
+// const handleDeepLink = async ({ url }: { url: string }) => {
+//   if (!url) return;
+//   console.log("🔗🔗🔗 DEEP LINK RECEIVED: 🔗🔗🔗");
+//   console.log("Full URL:", url);
+//   console.log("URL includes 'google-auth'?:", url.includes("google-auth"));
+
+//   // =========================================================
+//   // GOOGLE AUTH CALLBACK
+//   // =========================================================
+//   if (url.includes("google-auth")) {
+//     console.log("🔐 Processing Google auth callback...");
+    
+//     // Try to get tokens from URL fragment (#)
+//     const fragment = url.split("#")[1];
+//     if (fragment) {
+//       const params = new URLSearchParams(fragment);
+//       const accessToken = params.get("access_token");
+//       const refreshToken = params.get("refresh_token");
+      
+//       console.log("🔐 Access token:", accessToken ? "✅ Present" : "❌ Missing");
+//       console.log("🔐 Refresh token:", refreshToken ? "✅ Present" : "❌ Missing");
+      
+//       if (accessToken && refreshToken) {
+//         hasCheckedOnce = false;
+//         const { data, error } = await supabase.auth.setSession({
+//           access_token: accessToken,
+//           refresh_token: refreshToken,
+//         });
+        
+//         if (error) {
+//           console.error("❌ Session error:", error.message);
+//           return;
 //         }
-//       } else if (url.includes("reset-password") || url.includes("type=recovery")) {
-//         // Set flag to prevent onAuthStateChange from redirecting to Home
-//         skipAuthRedirect.current = true;
-
-//         // Supabase tokens can be in the fragment (#) or query (?)
-//         const searchPart = url.includes("#") ? url.split("#")[1] : url.split("?")[1];
-
-//         if (searchPart) {
-//           const params = new URLSearchParams(searchPart);
-//           const accessToken = params.get("access_token");
-//           const refreshToken = params.get("refresh_token");
-
-//           if (accessToken && refreshToken) {
-//             console.log("✅ Reset tokens detected. Navigating to ResetPassword...");
-
-//             // Add a small delay for navigation to ensure navigationRef is ready
-//             setTimeout(() => {
-//               navigationRef.current?.reset({
-//                 index: 0,
-//                 routes: [
-//                   {
-//                     name: "ResetPassword",
-//                     params: {
-//                       access_token: accessToken,
-//                       refresh_token: refreshToken,
-//                     },
-//                   },
-//                 ],
-//               });
-//             }, 800);
+        
+//         if (data.user) {
+//           console.log("✅ Google sign-in successful for:", data.user.email);
+//           handlePushToken(data.user.id);
+//           const isComplete = await checkCompleteness(data.user.id);
+//           if (isComplete) {
+//             navigationRef.current?.reset({
+//               index: 0,
+//               routes: [{ name: "HomeDrawer" }],
+//             });
+//           } else {
+//             navigationRef.current?.reset({
+//               index: 0,
+//               routes: [{ name: "CompleteProfile" }],
+//             });
 //           }
 //         }
 //       }
-//     };
+//     } else {
+//       // Try query string as fallback
+//       const queryString = url.split("?")[1];
+//       if (queryString) {
+//         const params = new URLSearchParams(queryString);
+//         const accessToken = params.get("access_token");
+//         const refreshToken = params.get("refresh_token");
+        
+//         if (accessToken && refreshToken) {
+//           hasCheckedOnce = false;
+//           const { data, error } = await supabase.auth.setSession({
+//             access_token: accessToken,
+//             refresh_token: refreshToken,
+//           });
+          
+//           if (!error && data.user) {
+//             console.log("✅ Google sign-in successful for:", data.user.email);
+//             handlePushToken(data.user.id);
+//             const isComplete = await checkCompleteness(data.user.id);
+//             if (isComplete) {
+//               navigationRef.current?.reset({
+//                 index: 0,
+//                 routes: [{ name: "HomeDrawer" }],
+//               });
+//             }
+//           }
+//         }
+//       }
+//     }
+//     return;
+//   }
+
+//   // =========================================================
+//   // PASSWORD RESET
+//   // =========================================================
+//   if (url.includes("reset-password") || url.includes("type=recovery")) {
+//     skipAuthRedirect.current = true;
+//     const searchPart = url.includes("#") ? url.split("#")[1] : url.split("?")[1];
+//     if (searchPart) {
+//       const params = new URLSearchParams(searchPart);
+//       const accessToken = params.get("access_token");
+//       const refreshToken = params.get("refresh_token");
+//       if (accessToken && refreshToken) {
+//         console.log("✅ Reset tokens detected. Navigating to ResetPassword...");
+//         setTimeout(() => {
+//           navigationRef.current?.reset({
+//             index: 0,
+//             routes: [
+//               {
+//                 name: "ResetPassword",
+//                 params: {
+//                   access_token: accessToken,
+//                   refresh_token: refreshToken,
+//                 },
+//               },
+//             ],
+//           });
+//         }, 800);
+//       }
+//     }
+//   }
+// };
 
 //     // Check for initial URL (Cold Start)
 //     Linking.getInitialURL().then((url) => {
@@ -224,7 +388,7 @@
 
 //     const subscription = Linking.addEventListener("url", handleDeepLink);
 
-//     // Listen for notification taps to handle navigation
+//     // Listen for notification taps
 //     const notificationResponseSubscription = Notifications.addNotificationResponseReceivedListener(response => {
 //       const data = response.notification.request.content.data;
 //       if (data?.screen === 'bookings') {
@@ -244,8 +408,6 @@
 //       notificationResponseSubscription.remove();
 //     };
 //   }, []);
-
-
 
 //   const linking: any = {
 //     prefixes: [
@@ -277,7 +439,6 @@
 //         }
 //       },
 //     },
-//     // Handle unmatched URLs gracefully
 //     async getInitialURL() {
 //       const url = await Linking.getInitialURL();
 //       if (url) {
@@ -297,13 +458,11 @@
 //         }
 //         listener(url);
 //       });
-
 //       return () => {
 //         linkingSubscription.remove();
 //       };
 //     },
 //   };
-
 
 //   if (loading) return null;
 
@@ -354,20 +513,11 @@
 //   );
 // }
 
-// // Force rebuild 1
-
-
 // const styles = StyleSheet.create({
 //   container: {
 //     flex: 1,
 //   },
 // });
-
-
-
-
-
-
 
 
 
@@ -422,20 +572,13 @@ export default function App() {
   };
 
   useEffect(() => {
-    // Flag to prevent re-triggering on token refreshes
     let hasCheckedOnce = false;
 
-    // Helper: check DB + Auth completeness
-    // Returns false and redirects if profile is incomplete
-    // useNav=true  → reset live navigation (post-mount, e.g. deep links)
-    // useNav=false → return result so caller can set initialRoute before mount
     const checkCompleteness = async (userId: string, useNav = true): Promise<boolean> => {
       if (!userId) return true;
       try {
-        // Always fetch fresh user data from server
         const { data: { user }, error: userError } = await supabase.auth.getUser();
         
-        // Handle invalid sessions (e.g. Refresh Token Not Found)
         if (userError || !user) {
           if (userError?.message?.includes("Refresh Token") || userError?.status === 401) {
             console.warn("Session invalid, signing out...");
@@ -450,11 +593,7 @@ export default function App() {
           .eq("id", user.id)
           .maybeSingle();
 
-        // Profile DB must have all 3 fields
-        const hasFullProfile =
-          !!(profile?.full_name && profile?.email && profile?.phone);
-
-        // Auth must have confirmed email (covers both email and Google users)
+        const hasFullProfile = !!(profile?.full_name && profile?.email && profile?.phone);
         const hasConfirmedIdentity =
           !!user.email_confirmed_at ||
           !!user.confirmed_at ||
@@ -479,8 +618,7 @@ export default function App() {
       }
     };
 
-    // 1. Initial Launch Check (cold start / app kill recovery)
-    // Navigation is NOT mounted yet here, so we set initialRoute instead of resetting nav
+    // 1. Initial Launch Check
     const initApp = async () => {
       try {
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
@@ -498,11 +636,9 @@ export default function App() {
 
         if (session?.user) {
           handlePushToken(session.user.id);
-          // Prevent onAuthStateChange from triggering a second reset immediately after this
           hasCheckedOnce = true;
         }
         
-        // LocationAccess is the universal startup screen now
         setInitialRoute("LocationAccess");
       } catch (err) {
         console.error("App init failed:", err);
@@ -513,16 +649,16 @@ export default function App() {
     };
     initApp();
 
-    // 2. Auth state changes — only handle SIGNED_IN once per session
+    // 2. Auth state changes
     const { data: listener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        // Reset skip flag when user signs out (after password reset completes)
+        console.log("🔐 Auth state changed:", event, session?.user?.email);
+        
         if (event === "SIGNED_OUT") {
           skipAuthRedirect.current = false;
           hasCheckedOnce = false;
           return;
         }
-        // Skip auto-redirect during password reset flow
         if (skipAuthRedirect.current && event === "SIGNED_IN") {
           console.log("Skipping auth redirect (password reset in progress)");
           return;
@@ -543,51 +679,82 @@ export default function App() {
       }
     );
 
-    // 3. Deep link handler
+    // 3. Deep link handler - SIMPLIFIED
     const handleDeepLink = async ({ url }: { url: string }) => {
       if (!url) return;
-      console.log("Deep link received:", url);
+      console.log("🔗 DEEP LINK RECEIVED:", url);
 
+      // Google Auth Callback
       if (url.includes("google-auth")) {
+        console.log("🔐 Processing Google auth callback...");
+        
+        // Extract tokens from URL
+        let accessToken = null;
+        let refreshToken = null;
+        
+        // Check fragment (#)
         const fragment = url.split("#")[1];
         if (fragment) {
           const params = new URLSearchParams(fragment);
-          const accessToken = params.get("access_token");
-          const refreshToken = params.get("refresh_token");
-          if (accessToken && refreshToken) {
-            hasCheckedOnce = false;
-            const { data, error } = await supabase.auth.setSession({
-              access_token: accessToken,
-              refresh_token: refreshToken,
-            });
-            if (!error && data.user) {
-              handlePushToken(data.user.id);
-              const isComplete = await checkCompleteness(data.user.id);
-              if (isComplete) {
-                navigationRef.current?.reset({
-                  index: 0,
-                  routes: [{ name: "HomeDrawer" }],
-                });
-              }
-            }
+          accessToken = params.get("access_token");
+          refreshToken = params.get("refresh_token");
+        }
+        
+        // Check query params (?)
+        if (!accessToken || !refreshToken) {
+          const queryString = url.split("?")[1];
+          if (queryString) {
+            const params = new URLSearchParams(queryString);
+            accessToken = params.get("access_token");
+            refreshToken = params.get("refresh_token");
           }
         }
-      } else if (url.includes("reset-password") || url.includes("type=recovery")) {
-        // Set flag to prevent onAuthStateChange from redirecting to Home
+        
+        if (accessToken && refreshToken) {
+          console.log("🔐 Tokens found, setting session...");
+          hasCheckedOnce = false;
+          const { data, error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+          
+          if (error) {
+            console.error("❌ Session error:", error.message);
+            return;
+          }
+          
+          if (data.user) {
+            console.log("✅ Google sign-in successful for:", data.user.email);
+            handlePushToken(data.user.id);
+            const isComplete = await checkCompleteness(data.user.id);
+            if (isComplete) {
+              navigationRef.current?.reset({
+                index: 0,
+                routes: [{ name: "HomeDrawer" }],
+              });
+            } else {
+              navigationRef.current?.reset({
+                index: 0,
+                routes: [{ name: "CompleteProfile" }],
+              });
+            }
+          }
+        } else {
+          console.warn("⚠️ No tokens found in URL");
+        }
+        return;
+      }
+
+      // Password Reset
+      if (url.includes("reset-password") || url.includes("type=recovery")) {
         skipAuthRedirect.current = true;
-
-        // Supabase tokens can be in the fragment (#) or query (?)
         const searchPart = url.includes("#") ? url.split("#")[1] : url.split("?")[1];
-
         if (searchPart) {
           const params = new URLSearchParams(searchPart);
           const accessToken = params.get("access_token");
           const refreshToken = params.get("refresh_token");
-
           if (accessToken && refreshToken) {
             console.log("✅ Reset tokens detected. Navigating to ResetPassword...");
-
-            // Add a small delay for navigation to ensure navigationRef is ready
             setTimeout(() => {
               navigationRef.current?.reset({
                 index: 0,
@@ -607,14 +774,14 @@ export default function App() {
       }
     };
 
-    // Check for initial URL (Cold Start)
+    // Set up deep link listeners
     Linking.getInitialURL().then((url) => {
       if (url) handleDeepLink({ url });
     });
 
     const subscription = Linking.addEventListener("url", handleDeepLink);
 
-    // Listen for notification taps to handle navigation
+    // Listen for notification taps
     const notificationResponseSubscription = Notifications.addNotificationResponseReceivedListener(response => {
       const data = response.notification.request.content.data;
       if (data?.screen === 'bookings') {
@@ -634,8 +801,6 @@ export default function App() {
       notificationResponseSubscription.remove();
     };
   }, []);
-
-
 
   const linking: any = {
     prefixes: [
@@ -667,33 +832,23 @@ export default function App() {
         }
       },
     },
-    // Handle unmatched URLs gracefully
     async getInitialURL() {
       const url = await Linking.getInitialURL();
       if (url) {
         console.log("Deep link opened app:", url);
-        console.log("Parsing serviceId from URL:", url.match(/service\/([^/?]+)/)?.[1]);
       }
       return url;
     },
     subscribe(listener: (url: string) => void) {
       const linkingSubscription = Linking.addEventListener("url", ({ url }) => {
         console.log("Deep link received:", url);
-        const serviceIdMatch = url.match(/service\/([^/?]+)/);
-        if (serviceIdMatch) {
-          console.log("Extracted serviceId:", serviceIdMatch[1]);
-        } else {
-          console.log("Deep link: No serviceId found, will navigate to Home");
-        }
         listener(url);
       });
-
       return () => {
         linkingSubscription.remove();
       };
     },
   };
-
 
   if (loading) return null;
 
