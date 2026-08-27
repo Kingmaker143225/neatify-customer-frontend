@@ -3,6 +3,7 @@ import { RouteProp, useFocusEffect, useNavigation } from "@react-navigation/nati
 import * as Location from "expo-location";
 import * as Haptics from "expo-haptics";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { createCustomerBooking } from "../lib/backendClient";
 import LocationService from "../services/LocationService";
 import {
   ActivityIndicator,
@@ -31,7 +32,6 @@ import { useTheme } from "../context/ThemeContext";
 import { useBottomNavPadding } from "../hooks/useBottomNavPadding";
 import { processPayment } from "../lib/paymentService";
 import { supabase } from "../lib/supabase";
-import { invokeFunction } from "../lib/backendClient";
 import { RootStackParamList, SelectedService } from "../navigation/AppNavigator";
 import { COLORS } from "../theme/colors";
 import { clearClaimedOffer, getClaimedOffer } from "../utils/priceUtils";
@@ -876,45 +876,57 @@ export default function CheckoutScreen({ route }: Props) {
     try {
       /* ================= 1️⃣ CREATE BOOKING (PENDING) ================= */
 
-      const { data: bookingData, error: insertError } = await supabase
-        .from("bookings")
-        .insert([
-          {
-            user_id: userId,
-            customer_name: profile.full_name,
-            email: profile.email,
-            phone_number: profile.phone,
-            full_address: fullAddress,
-            latitude: finalLat,
-            longitude: finalLng,
-            services: checkoutServices,
-            booking_date: datePart,
-            booking_time: timePart,
-            booking_schedule_at: `${datePart} ${timePart} +05:30`,
-            total_amount: Number(grandTotal.toFixed(2)),
-            payment_status: "pending",
-            payment_method: "razorpay",
+      const bookingResponse = await createCustomerBooking({
+        customer_name: profile.full_name,
+        phone_number: profile.phone,
+        full_address: fullAddress,
 
-            // ✅🔥 ADD THIS LINE (IMPORTANT)
-            platform: Platform.OS === "ios" ? "ios" : "android",
+        latitude: finalLat ?? undefined,
+        longitude: finalLng ?? undefined,
 
-            coupon_code: couponApplied && coupon ? coupon.coupon_code : null,
-            coupon_discount_percentage: couponApplied && coupon ? couponDiscount : 0,
-            coupon_discount_amount: couponApplied && coupon
-              ? (coupon.discount_amount && coupon.discount_amount > 0
-                  ? coupon.discount_amount
-                  : Number((((totalOriginalPrice > 0 ? totalOriginalPrice : totalPrice) * couponDiscount) / 100).toFixed(2)))
-              : 0,
-          }
-        ])
-        .select("id")
-        .single();
+        services: checkoutServices,
 
-      if (insertError || !bookingData) {
-        throw new Error(insertError?.message || "Failed to create booking");
+        booking_date: datePart,
+        booking_time: timePart,
+
+        total_amount: Number(grandTotal.toFixed(2)),
+
+        coupon_code:
+          couponApplied && coupon
+            ? coupon.coupon_code
+            : null,
+
+        coupon_discount_percentage:
+          couponApplied && coupon
+            ? couponDiscount
+            : 0,
+
+        coupon_discount_amount:
+          couponApplied && coupon
+            ? (
+              coupon.discount_amount &&
+              coupon.discount_amount > 0
+            )
+              ? coupon.discount_amount
+              : Number(
+                (
+                  (
+                    (totalOriginalPrice > 0
+                      ? totalOriginalPrice
+                      : totalPrice) *
+                    couponDiscount
+                  ) / 100
+                ).toFixed(2)
+              )
+            : 0,
+      });
+
+      const bookingId = bookingResponse.id;
+
+      if (!bookingId) {
+        throw new Error("Failed to create booking");
       }
 
-      const bookingId = bookingData.id;
       console.log("✅ Booking created with ID:", bookingId);
 
       /* ================= 2️⃣ PROCESS PAYMENT ================= */
@@ -1008,9 +1020,14 @@ export default function CheckoutScreen({ route }: Props) {
 
       // ✅ Send Booking Confirmation Email
       try {
-        await invokeFunction("send-booking-confirmation", {
-          body: { booking_id: bookingId },
-        });
+        await supabase.functions.invoke(
+          "send-booking-confirmation",
+          {
+            body: {
+              booking_id: bookingId,
+            },
+          }
+        );
         console.log("✅ Booking confirmation email sent");
       } catch (emailError) {
         console.error("Email sending failed (non-critical):", emailError);
@@ -1019,14 +1036,18 @@ export default function CheckoutScreen({ route }: Props) {
 
       // ✅ Send WhatsApp Payment Confirmation
       try {
-        await invokeFunction("send-payment-confirmation", {
-          body: {
-            customer_phone: profile.phone,
-            customer_name: profile.full_name,
-            amount_paid: String(grandTotal.toFixed(2)),
-            service_name: checkoutServices[0]?.title || 'Service'
-          },
-        });
+        await supabase.functions.invoke(
+          "send-payment-confirmation",
+          {
+            body: {
+              customer_phone: profile.phone,
+              customer_name: profile.full_name,
+              amount_paid: String(grandTotal.toFixed(2)),
+              service_name:
+                checkoutServices[0]?.title || "Service",
+            },
+          }
+        );
         console.log("✅ WhatsApp payment confirmation sent");
       } catch (waError) {
         console.error("WhatsApp sending failed (non-critical):", waError);
@@ -1034,14 +1055,20 @@ export default function CheckoutScreen({ route }: Props) {
 
       // ✅ Send WhatsApp Booking Confirmation
       try {
-        await invokeFunction("send-booking-confirmation-whatsapp", {
-          body: {
-            customer_phone: profile.phone,
-            customer_name: profile.full_name,
-            service_name: checkoutServices[0]?.title || 'Service',
-            booking_date: bookingDateText || 'Your scheduled date'
-          },
-        });
+        await supabase.functions.invoke(
+          "send-booking-confirmation-whatsapp",
+          {
+            body: {
+              customer_phone: profile.phone,
+              customer_name: profile.full_name,
+              service_name:
+                checkoutServices[0]?.title || "Service",
+              booking_date:
+                bookingDateText ||
+                "Your scheduled date",
+            },
+          }
+        );
         console.log("✅ WhatsApp booking confirmation sent");
       } catch (waBookingError) {
         console.error("WhatsApp booking sending failed (non-critical):", waBookingError);

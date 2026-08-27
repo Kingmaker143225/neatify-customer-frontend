@@ -36,7 +36,7 @@
 //   options: RequestInit = {}
 // ): Promise<T> {
 //   console.log(`📡 [Backend] Request: ${options.method || 'GET'} ${path}`);
-  
+
 //   const accessToken = await getAccessToken();
 //   console.log(`📡 [Backend] Access token: ${accessToken ? '✅ Present' : '❌ Missing'}`);
 
@@ -127,7 +127,7 @@
 //   password: string
 // ) {
 //   console.log("📡 [Backend] customerSignup called");
-  
+
 //   return request<{
 //     user_id: string;
 //     email: string;
@@ -147,7 +147,7 @@
 
 // export async function getCustomerMe() {
 //   console.log("📡 [Backend] getCustomerMe called");
-  
+
 //   return request<{
 //     id: string;
 //     email: string;
@@ -160,7 +160,7 @@
 
 // export async function getCustomerProfileCompleteness() {
 //   console.log("📡 [Backend] getCustomerProfileCompleteness called");
-  
+
 //   return request<{
 //     profile_exists: boolean;
 //     profile_complete: boolean;
@@ -173,7 +173,7 @@
 //   console.log("🔴🔴🔴 [Backend] customerLogout() function called 🔴🔴🔴");
 //   console.log("📡 [Backend] API_BASE_URL:", API_BASE_URL);
 //   console.log("📡 [Backend] Full URL:", buildUrl("/api/v1/customer/auth/logout"));
-  
+
 //   try {
 //     const result = await request<{
 //       success: boolean;
@@ -181,7 +181,7 @@
 //     }>("/api/v1/customer/auth/logout", {
 //       method: "POST",
 //     });
-    
+
 //     console.log("✅ [Backend] customerLogout() response:", result);
 //     return result;
 //   } catch (error) {
@@ -197,7 +197,7 @@
 
 // export async function getCustomerCategories() {
 //   console.log("📡 [Backend] getCustomerCategories called");
-  
+
 //   return request<any[]>(
 //     "/api/v1/customer/categories"
 //   );
@@ -215,7 +215,7 @@
 //   }
 // ) {
 //   console.log("📡 [Backend] getCustomerServices called", params);
-  
+
 //   const searchParams =
 //     new URLSearchParams();
 
@@ -247,7 +247,7 @@
 //   serviceId: string
 // ) {
 //   console.log("📡 [Backend] getCustomerServiceById called", serviceId);
-  
+
 //   return request<any>(
 //     `/api/v1/customer/services/${encodeURIComponent(
 //       serviceId
@@ -259,7 +259,7 @@
 //   slug: string
 // ) {
 //   console.log("📡 [Backend] getCustomerServiceBySlug called", slug);
-  
+
 //   return request<any>(
 //     `/api/v1/customer/services/slug/${encodeURIComponent(
 //       slug
@@ -276,7 +276,7 @@
 //   serviceType?: string
 // ) {
 //   console.log("📡 [Backend] getCustomerAddOns called", serviceType);
-  
+
 //   const query = serviceType
 //     ? `?service_type=${encodeURIComponent(
 //         serviceType
@@ -336,7 +336,7 @@ async function request<T>(
   options: RequestInit = {}
 ): Promise<T> {
   console.log(`📡 [Backend] Request: ${options.method || 'GET'} ${path}`);
-  
+
   const accessToken = await getAccessToken();
   console.log(`📡 [Backend] Access token: ${accessToken ? '✅ Present' : '❌ Missing'}`);
 
@@ -427,7 +427,7 @@ export async function customerSignup(
   password: string
 ) {
   console.log("📡 [Backend] customerSignup called");
-  
+
   return request<{
     user_id: string;
     email: string;
@@ -447,7 +447,7 @@ export async function customerSignup(
 
 export async function getCustomerMe() {
   console.log("📡 [Backend] getCustomerMe called");
-  
+
   return request<{
     id: string;
     email: string;
@@ -460,7 +460,7 @@ export async function getCustomerMe() {
 
 export async function getCustomerProfileCompleteness() {
   console.log("📡 [Backend] getCustomerProfileCompleteness called");
-  
+
   return request<{
     profile_exists: boolean;
     profile_complete: boolean;
@@ -474,7 +474,7 @@ export async function customerLogout() {
   console.log("📡 [Backend] API_BASE_URL:", API_BASE_URL);
   console.log("📡 [Backend] Full URL:", buildUrl("/api/v1/customer/auth/logout"));
   console.log("📡 [Backend] About to make fetch request...");
-  
+
   try {
     const result = await request<{
       success: boolean;
@@ -482,7 +482,7 @@ export async function customerLogout() {
     }>("/api/v1/customer/auth/logout", {
       method: "POST",
     });
-    
+
     console.log("✅ [Backend] customerLogout() response:", result);
     return result;
   } catch (error) {
@@ -498,7 +498,7 @@ export async function customerLogout() {
 
 export async function getCustomerCategories() {
   console.log("📡 [Backend] getCustomerCategories called");
-  
+
   return request<any[]>(
     "/api/v1/customer/categories"
   );
@@ -516,7 +516,7 @@ export async function getCustomerServices(
   }
 ) {
   console.log("📡 [Backend] getCustomerServices called", params);
-  
+
   const searchParams =
     new URLSearchParams();
 
@@ -538,8 +538,7 @@ export async function getCustomerServices(
     searchParams.toString();
 
   return request<any[]>(
-    `/api/v1/customer/services${
-      query ? `?${query}` : ""
+    `/api/v1/customer/services${query ? `?${query}` : ""
     }`
   );
 }
@@ -548,7 +547,7 @@ export async function getCustomerServiceById(
   serviceId: string
 ) {
   console.log("📡 [Backend] getCustomerServiceById called", serviceId);
-  
+
   return request<any>(
     `/api/v1/customer/services/${encodeURIComponent(
       serviceId
@@ -560,7 +559,7 @@ export async function getCustomerServiceBySlug(
   slug: string
 ) {
   console.log("📡 [Backend] getCustomerServiceBySlug called", slug);
-  
+
   return request<any>(
     `/api/v1/customer/services/slug/${encodeURIComponent(
       slug
@@ -577,14 +576,56 @@ export async function getCustomerAddOns(
   serviceType?: string
 ) {
   console.log("📡 [Backend] getCustomerAddOns called", serviceType);
-  
+
   const query = serviceType
     ? `?service_type=${encodeURIComponent(
-        serviceType
-      )}`
+      serviceType
+    )}`
     : "";
 
   return request<any[]>(
     `/api/v1/customer/add-ons${query}`
+  );
+}
+
+// =========================================================
+// CUSTOMER BOOKINGS
+// =========================================================
+
+export async function createCustomerBooking(
+  payload: {
+    customer_name: string;
+    phone_number: string;
+    full_address: string;
+
+    latitude?: number;
+    longitude?: number;
+
+    services: any[];
+
+    booking_date: string;
+    booking_time: string;
+
+    total_amount: number;
+
+    coupon_code?: string | null;
+    coupon_discount_percentage?: number;
+    coupon_discount_amount?: number;
+  }
+) {
+  return request<{
+    id: string;
+    payment_status: string;
+    message: string;
+  }>("/api/v1/customer/bookings", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+
+export async function getCustomerBookings() {
+  return request<any[]>(
+    "/api/v1/customer/bookings"
   );
 }

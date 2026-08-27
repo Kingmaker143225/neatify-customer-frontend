@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import Header from "../components/Header";
+import { getCustomerBookings } from "../lib/backendClient";
 import { useLanguage } from "../context/LanguageContext";
 import { useTheme } from "../context/ThemeContext";
 import { supabase } from "../lib/supabase";
@@ -43,26 +44,21 @@ export default function MyBookingsScreen() {
   };
 
   const fetchMyBookings = useCallback(async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    try {
+      setLoading(true);
 
-    if (!user) {
+      const data = await getCustomerBookings();
+
+      setBookings(data || []);
+    } catch (error) {
+      console.error(
+        "Failed to load customer bookings",
+        error
+      );
+      setBookings([]);
+    } finally {
       setLoading(false);
-      return;
     }
-
-    const { data, error } = await supabase
-      .from("bookings")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false });
-
-    if (!error && data) {
-      setBookings(data);
-    }
-
-    setLoading(false);
   }, []);
 
   useFocusEffect(
