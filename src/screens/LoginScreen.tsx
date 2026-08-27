@@ -41,6 +41,12 @@ import { supabase } from "../lib/supabase";
 import { COLORS } from "../theme/colors";
 import { setClaimedOffer } from "../utils/priceUtils";
 import { generateReferralCode, validateReferralCode } from "../utils/referralUtils";
+import { customerLogout } from "../lib/backendClient";
+
+import {
+  customerLogin,
+  customerSignup,
+} from "../lib/backendClient";
 
 // Animated Input Component
 function AnimatedInput({ icon, placeholder, value, onChange, secureTextEntry, rightElement, keyboardType, maxLength, autoCapitalize }: any) {
@@ -421,54 +427,45 @@ export default function LoginScreen(props: any) {
       }
 
       const cleanPhone = phone.replace(/\D/g, "").slice(-10);
-      const formattedPhone = `+91${cleanPhone}`;
-      const securePassword = crypto.randomUUID();
+      
+      // ==========================================
+      // SIGNUP THROUGH FASTAPI
+      // ==========================================
+      const signupResponse = await customerSignup(
+        fullName.trim(),
+        email.trim(),
+        cleanPhone,
+        password
+      );
 
-      const { data, error } = await supabase.auth.signUp({
-        email, password: securePassword, options: { data: { full_name: fullName.trim(), phone_number: formattedPhone, } }
+      console.log("✅ Customer signup successful:", signupResponse);
+
+      if (signupResponse.email_confirmation_required) {
+        showAlert({
+          type: "success",
+          title: "Account Created",
+          message:
+            signupResponse.message ||
+            "Your account has been created. Please confirm your email before logging in.",
+        });
+
+        setIsLogin(true);
+        setLoading(false);
+        return;
+      }
+
+      // If email confirmation is not required, sign in the user
+      // Note: You may need to handle this differently based on your backend
+      // For now, we'll show a success message and let the user login manually
+      showAlert({
+        type: "success",
+        title: "Account Created",
+        message: "Your account has been created successfully. Please login to continue.",
       });
 
-      if (error) throw error;
-      const authUser = data.user;
+      setIsLogin(true);
+      setLoading(false);
 
-      if (!authUser?.identities?.length) {
-        throw new Error("This email is already registered. Please login instead.");
-      }
-
-      if (authUser) {
-        await supabase.auth.updateUser({ data: { full_name: fullName.trim(), phone_number: formattedPhone, } });
-        const myReferralCode = generateReferralCode(fullName.trim());
-        const selectedServiceTitle = selectedService?.title || null;
-        const selectedServiceId = selectedService?.id || null;
-
-        await Promise.all([
-          supabase.from("profile").upsert({ id: authUser.id, full_name: fullName.trim(), email: email.trim(), phone: cleanPhone, referral_code: myReferralCode, referred_by_id: referrerId, service_selected: selectedServiceTitle }),
-          supabase.from("signup").upsert({ id: authUser.id, full_name: fullName.trim(), email: email.trim(), phone: cleanPhone, service_selected: selectedServiceTitle }),
-          supabase.from("wallet").upsert({ user_id: authUser.id, balance: 0 })
-        ]);
-
-        await setClaimedOffer({ serviceId: selectedServiceId, serviceTitle: selectedServiceTitle, offerPercentage: 40, claimedAt: new Date().toISOString() });
-
-        const userMetadataUpdate: any = {};
-        if (selectedServiceTitle) {
-          userMetadataUpdate.show_signup_offer_popup = true;
-          userMetadataUpdate.signup_service_title = selectedServiceTitle;
-          userMetadataUpdate.signup_service_id = selectedServiceId;
-        }
-
-        if (referrerId) {
-          await supabase.from("referrals").insert({ referrer_id: referrerId, referred_user_id: authUser.id, status: 'pending', reward_amount: 50 });
-          const welcomeCouponCode = `WELCOME50_${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-          await supabase.from("coupons").insert({ coupon_code: welcomeCouponCode, discount_amount: 50, is_used: false, phone_number: cleanPhone });
-          userMetadataUpdate.show_welcome_reward = true;
-          userMetadataUpdate.welcome_coupon_code = welcomeCouponCode;
-        }
-
-        if (Object.keys(userMetadataUpdate).length > 0) {
-          await supabase.auth.updateUser({ data: userMetadataUpdate });
-        }
-        await checkProfileAndNavigate(authUser.id);
-      }
     } catch (err: any) {
       showAlert({ type: "error", title: t("notifications.authFailed"), message: err.message });
     } finally {
@@ -477,8 +474,46 @@ export default function LoginScreen(props: any) {
   };
 
   // ==========================================
-  // LEGACY EMAIL/PASSWORD AUTHENTICATION
-  // KEPT FOR FUTURE USE — DO NOT DELETE
+  // LOGOUT HANDLER
+  // ==========================================
+  const handleLogout = async () => {
+    console.log("🔴 LOGOUT BUTTON PRESSED IN LOGIN SCREEN");
+    try {
+      setLoading(true);
+
+      // Call FastAPI logout
+      console.log("📡 Calling customerLogout...");
+      await customerLogout();
+      console.log("✅ Backend logout successful");
+
+      // Clear local Supabase session
+      await supabase.auth.signOut();
+      console.log("✅ Supabase logout successful");
+
+      console.log("✅ Customer logged out");
+
+      navigation.reset({
+        index: 0,
+        routes: [{ name: "Login" }],
+      });
+
+    } catch (error: any) {
+      console.error("❌ Logout error:", error);
+
+      // Still clear local session
+      await supabase.auth.signOut();
+
+      navigation.reset({
+        index: 0,
+        routes: [{ name: "Login" }],
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ==========================================
+  // MAIN AUTHENTICATION HANDLER
   // ==========================================
   const handleSubmit = async () => {
     setLoading(true);
@@ -488,102 +523,153 @@ export default function LoginScreen(props: any) {
 
       if (isLogin) {
         if (!email || !password) {
-          showAlert({ type: "warning", title: t("notifications.missingInfo"), message: t("notifications.emailPasswordRequired") });
-          setLoading(false); return;
-        }
-        if (!isValidEmail(email)) {
-          showAlert({ type: "warning", title: "Invalid Email", message: "Please enter a valid email address." });
-          setLoading(false); return;
-        }
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        authUser = data.user;
-      } else {
-        if (!fullName || !email || !phone || !password) {
-          showAlert({ type: "warning", title: t("notifications.missingInfo"), message: "All fields are required for signup (Name, Email, Phone, Password)." });
-          setLoading(false); return;
-        }
-        if (eligibleServices.length > 0 && !selectedService) {
-          showAlert({ type: "warning", title: "Select Service", message: "Please select a service for your 40% OFF discount." });
-          setLoading(false); return;
-        }
-        if (!isValidPassword(password)) {
-          showAlert({ type: "error", title: "Invalid Password", message: "Password must contain at least 8 characters, uppercase, lowercase, number, and special character." });
-          setLoading(false); return;
+          showAlert({
+            type: "warning",
+            title: t("notifications.missingInfo"),
+            message: t("notifications.emailPasswordRequired"),
+          });
+
+          setLoading(false);
+          return;
         }
 
-        let referrerId = null;
-        if (referralCode.trim()) {
-          referrerId = await validateReferralCode(referralCode.trim());
-          if (!referrerId) {
-            showAlert({ type: "warning", title: "Invalid Referral", message: "The referral code you entered is invalid. You can continue without it." });
-            setLoading(false); return;
-          }
+        if (!email.includes("@")) {
+          showAlert({
+            type: "warning",
+            title: "Invalid Email",
+            message: "Please enter a valid email address.",
+          });
+
+          setLoading(false);
+          return;
         }
+
+        // ==========================================
+        // LOGIN THROUGH FASTAPI
+        // ==========================================
+        const loginResponse = await customerLogin(
+          email.trim(),
+          password
+        );
+
+        console.log("✅ Customer login successful:", {
+          user_id: loginResponse.user_id,
+          email: loginResponse.email,
+          profile_exists: loginResponse.profile_exists,
+        });
+
+        // Store the FastAPI-returned Supabase tokens
+        const { error: sessionError } = await supabase.auth.setSession({
+          access_token: loginResponse.access_token,
+          refresh_token: loginResponse.refresh_token,
+        });
+
+        if (sessionError) {
+          throw sessionError;
+        }
+
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
+        authUser = user;
+
+      } else {
+        // ==========================================
+        // SIGNUP THROUGH FASTAPI
+        // ==========================================
+        // This is the fallback signup path when the user is on the signup tab
+        // The main signup logic is in handleSignupSubmit above
+        // This handles the case where the user clicks "Sign Up" on the main form
+        
+        if (!fullName || !email || !phone || !password) {
+          showAlert({
+            type: "warning",
+            title: t("notifications.missingInfo"),
+            message: "All fields are required for signup (Name, Email, Phone, Password).",
+          });
+          setLoading(false);
+          return;
+        }
+
         if (!isValidEmail(email)) {
-          showAlert({ type: "warning", title: "Invalid Email", message: "Please enter a valid email address." });
-          setLoading(false); return;
+          showAlert({
+            type: "warning",
+            title: "Invalid Email",
+            message: "Please enter a valid email address.",
+          });
+          setLoading(false);
+          return;
+        }
+
+        if (!isValidPassword(password)) {
+          showAlert({
+            type: "error",
+            title: "Invalid Password",
+            message: "Password must contain at least 8 characters, uppercase, lowercase, number, and special character.",
+          });
+          setLoading(false);
+          return;
         }
 
         const cleanPhone = phone.replace(/\D/g, "").slice(-10);
         if (cleanPhone.length < 10) {
-          showAlert({ type: "warning", title: "Invalid Phone", message: "Please enter a valid 10-digit phone number." });
-          setLoading(false); return;
+          showAlert({
+            type: "warning",
+            title: "Invalid Phone",
+            message: "Please enter a valid 10-digit phone number.",
+          });
+          setLoading(false);
+          return;
         }
 
-        const formattedPhone = `+91${cleanPhone}`;
+        // Call FastAPI signup
+        const signupResponse = await customerSignup(
+          fullName.trim(),
+          email.trim(),
+          cleanPhone,
+          password
+        );
 
-        const { data, error } = await supabase.auth.signUp({
-          email, password, options: { data: { full_name: fullName.trim(), phone_number: formattedPhone, } }
+        console.log("✅ Customer signup successful:", signupResponse);
+
+        if (signupResponse.email_confirmation_required) {
+          showAlert({
+            type: "success",
+            title: "Account Created",
+            message:
+              signupResponse.message ||
+              "Your account has been created. Please confirm your email before logging in.",
+          });
+
+          setIsLogin(true);
+          setLoading(false);
+          return;
+        }
+
+        // If email confirmation is not required, you might want to auto-login
+        // or show a success message
+        showAlert({
+          type: "success",
+          title: "Account Created",
+          message: "Your account has been created successfully. Please login to continue.",
         });
 
-        if (error) throw error;
-        authUser = data.user;
-
-        if (!authUser?.identities?.length) {
-          throw new Error("This email is already registered. Please login instead.");
-        }
-
-        if (authUser) {
-          await supabase.auth.updateUser({ data: { full_name: fullName.trim(), phone_number: formattedPhone, } });
-          const myReferralCode = generateReferralCode(fullName.trim());
-          const selectedServiceTitle = selectedService?.title || null;
-          const selectedServiceId = selectedService?.id || null;
-
-          await Promise.all([
-            supabase.from("profile").upsert({ id: authUser.id, full_name: fullName.trim(), email: email.trim(), phone: cleanPhone, referral_code: myReferralCode, referred_by_id: referrerId, service_selected: selectedServiceTitle }),
-            supabase.from("signup").upsert({ id: authUser.id, full_name: fullName.trim(), email: email.trim(), phone: cleanPhone, service_selected: selectedServiceTitle }),
-            supabase.from("wallet").upsert({ user_id: authUser.id, balance: 0 })
-          ]);
-
-          await setClaimedOffer({ serviceId: selectedServiceId, serviceTitle: selectedServiceTitle, offerPercentage: 40, claimedAt: new Date().toISOString() });
-
-          const userMetadataUpdate: any = {};
-          if (selectedServiceTitle) {
-            userMetadataUpdate.show_signup_offer_popup = true;
-            userMetadataUpdate.signup_service_title = selectedServiceTitle;
-            userMetadataUpdate.signup_service_id = selectedServiceId;
-          }
-
-          if (referrerId) {
-            await supabase.from("referrals").insert({ referrer_id: referrerId, referred_user_id: authUser.id, status: 'pending', reward_amount: 50 });
-            const welcomeCouponCode = `WELCOME50_${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-            await supabase.from("coupons").insert({ coupon_code: welcomeCouponCode, discount_amount: 50, is_used: false, phone_number: cleanPhone });
-            userMetadataUpdate.show_welcome_reward = true;
-            userMetadataUpdate.welcome_coupon_code = welcomeCouponCode;
-          }
-
-          if (Object.keys(userMetadataUpdate).length > 0) {
-            await supabase.auth.updateUser({ data: userMetadataUpdate });
-          }
-        }
+        setIsLogin(true);
+        setLoading(false);
+        return;
       }
 
       if (authUser) {
         await checkProfileAndNavigate(authUser.id);
       }
+
     } catch (err: any) {
-      showAlert({ type: "error", title: t("notifications.authFailed"), message: err.message });
+      showAlert({
+        type: "error",
+        title: t("notifications.authFailed"),
+        message: err?.message || "Authentication failed.",
+      });
     } finally {
       setLoading(false);
     }
@@ -785,8 +871,7 @@ export default function LoginScreen(props: any) {
 
               {/* 
                 ==========================================
-                LEGACY EMAIL/PASSWORD UI
-                KEPT FOR FUTURE USE — DO NOT DELETE
+                EMAIL/PASSWORD UI - REMAIN VISIBLE
                 ==========================================
               */}
               {/* FULL NAME */}
@@ -916,7 +1001,11 @@ export default function LoginScreen(props: any) {
 
               {/* GOOGLE BUTTON */}
               <Animated.View entering={FadeInDown.duration(400).delay(isLogin ? 500 : 600)}>
-                <TouchableOpacity style={styles.googleBtn} onPress={handleGoogleSignIn} disabled={googleLoading}>
+                <TouchableOpacity 
+                  style={styles.googleBtn} 
+                  onPress={handleGoogleSignIn} 
+                  disabled={googleLoading}
+                >
                   {googleLoading ? (
                     <ActivityIndicator color="#111" />
                   ) : (
@@ -940,6 +1029,7 @@ export default function LoginScreen(props: any) {
                 </TouchableOpacity>
               </Animated.View>
 
+            
             </View>
           </Animated.View>
 
