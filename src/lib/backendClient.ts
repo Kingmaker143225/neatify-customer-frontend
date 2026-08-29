@@ -169,6 +169,59 @@ export async function getCustomerProfileCompleteness() {
   }>("/api/v1/customer/auth/profile-completeness");
 }
 
+// =========================================================
+// CUSTOMER REWARDS / OFFERS
+// =========================================================
+
+export type CustomerRewardsResponse = {
+  show_welcome_reward: boolean;
+  welcome_coupon_code: string | null;
+
+  show_signup_offer_popup: boolean;
+  signup_service_title: string | null;
+  signup_service_id: string | null;
+};
+
+export type CustomerRewardsUpdateRequest = {
+  show_welcome_reward?: boolean;
+  show_signup_offer_popup?: boolean;
+};
+
+
+// =========================================================
+// GET CUSTOMER REWARDS
+// =========================================================
+
+export async function getCustomerRewards() {
+  console.log("📡 [Backend] getCustomerRewards called");
+
+  return request<CustomerRewardsResponse>(
+    "/api/v1/customer/auth/rewards"
+  );
+}
+
+
+// =========================================================
+// UPDATE CUSTOMER REWARDS
+// =========================================================
+
+export async function updateCustomerRewards(
+  data: CustomerRewardsUpdateRequest
+) {
+  console.log(
+    "📡 [Backend] updateCustomerRewards called:",
+    data
+  );
+
+  return request<CustomerRewardsResponse>(
+    "/api/v1/customer/auth/rewards",
+    {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }
+  );
+}
+
 export async function customerLogout() {
   console.log("🔴🔴🔴 [Backend] customerLogout() function called 🔴🔴🔴");
   console.log("📡 [Backend] API_BASE_URL:", API_BASE_URL);
@@ -651,5 +704,39 @@ export async function getCustomerWhyChooseUs() {
   );
 }
 
+// =========================================================
+// CUSTOMER HOME
+// =========================================================
 
+export async function getCustomerHeroBanners() {
+  console.log(
+    "📡 [Backend] getCustomerHeroBanners called"
+  );
+
+  return request<any[]>(
+    "/api/v1/customer/hero-banners"
+  );
+}
+
+
+export async function getCustomerPopups() {
+  console.log(
+    "📡 [Backend] getCustomerPopups called"
+  );
+
+  return request<any[]>(
+    "/api/v1/customer/popups"
+  );
+}
+
+
+export async function getCustomerOffers() {
+  console.log(
+    "📡 [Backend] getCustomerOffers called"
+  );
+
+  return request<any[]>(
+    "/api/v1/customer/offers"
+  );
+}
 
