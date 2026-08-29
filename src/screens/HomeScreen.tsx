@@ -307,8 +307,7 @@ const fetchMainCategories = useCallback(async () => {
   }
 }, []);
 
-
-  const fetchHeroBanners = useCallback(async () => {
+const fetchHeroBanners = useCallback(async () => {
   const fallbackBanners: ImageSourcePropType[] = [
     require("../../assets/images/1.png"),
     require("../../assets/images/2.png"),
@@ -318,23 +317,26 @@ const fetchMainCategories = useCallback(async () => {
   try {
     const data = await getCustomerHeroBanners();
 
-    if (data && data.length > 0) {
-      const bannerUrls: ImageSourcePropType[] =
-        data.map((banner: { image_path: string }) => ({
-          uri: banner.image_path,
+    console.log("✅ Hero banners from backend:", data);
+
+    if (data && Array.isArray(data) && data.length > 0) {
+      const bannerUrls: ImageSourcePropType[] = data
+        .filter((banner: { image_url?: string }) => banner.image_url)
+        .map((banner: { image_url: string }) => ({
+          uri: banner.image_url,
         }));
 
-      setHeroBanners(bannerUrls);
-      return;
+      console.log("🖼️ Hero banner URLs:", bannerUrls);
+
+      if (bannerUrls.length > 0) {
+        setHeroBanners(bannerUrls);
+        return;
+      }
     }
 
     setHeroBanners(fallbackBanners);
   } catch (error) {
-    console.error(
-      "Backend hero banners error:",
-      error
-    );
-
+    console.error("❌ Backend hero banners error:", error);
     setHeroBanners(fallbackBanners);
   }
 }, []);

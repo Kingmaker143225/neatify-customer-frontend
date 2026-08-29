@@ -1,3 +1,203 @@
+// import React, { useEffect, useState, useCallback } from "react";
+// import {
+//   View,
+//   Text,
+//   StyleSheet,
+//   ActivityIndicator,
+//   Pressable,
+//   StatusBar,
+//   ScrollView,
+// } from "react-native";
+// import { SafeAreaView } from "react-native-safe-area-context";
+// import { Ionicons } from "@expo/vector-icons";
+// import { RouteProp, useNavigation } from "@react-navigation/native";
+
+// import { supabase } from "../lib/supabase";
+// import { useTheme } from "../context/ThemeContext";
+// import { useBottomNavPadding } from "../hooks/useBottomNavPadding";
+// import { Service } from "../types/service";
+// import ServiceCard from "../components/ServiceCard";
+// import { RootStackParamList } from "../navigation/AppNavigator";
+// import { COLORS } from "../theme/colors";
+
+// type Props = {
+//   route: RouteProp<RootStackParamList, "CategoryServices">;
+// };
+
+// export default function CategoryServicesScreen({ route }: Props) {
+//   const { mainCategoryName, mainCategoryId, subCategories } = route.params;
+//   const { theme } = useTheme();
+//   const bottomNavPadding = useBottomNavPadding();
+//   const navigation = useNavigation<any>();
+//   const [services, setServices] = useState<Service[]>([]);
+//   const [loading, setLoading] = useState(true);
+
+//   const fetchServices = useCallback(async () => {
+//     setLoading(true);
+//     const { data, error } = await supabase
+//       .from("services")
+//       .select("*")
+//       .eq("main_category_id", mainCategoryId)
+//       .order("sort_order", { ascending: true });
+
+//     if (error) {
+//       console.error("Error fetching services:", error);
+//     } else {
+//       setServices(data || []);
+//     }
+//     setLoading(false);
+//   }, [mainCategoryId]);
+
+//   useEffect(() => {
+//     fetchServices();
+//   }, [fetchServices]);
+
+//   // Group services by subcategory
+//   const groupedServices = subCategories
+//     .map((cat: any) => ({
+//       title: cat.label,
+//       value: cat.value,
+//       data: services.filter((s) => s.service_type === cat.value),
+//     }))
+//     .filter((group) => group.data.length > 0);
+
+//   return (
+//     <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={["top"]}>
+//       <StatusBar barStyle={theme.background === "#FFFFFF" ? "dark-content" : "light-content"} />
+      
+//       {/* Header */}
+//       <View style={[styles.header, { borderBottomColor: theme.border }]}>
+//         <Pressable 
+//           onPress={() => navigation.goBack()}
+//           style={[styles.backButton, { backgroundColor: theme.surfaceVariant }]}
+//         >
+//           <Ionicons name="arrow-back" size={24} color={theme.text} />
+//         </Pressable>
+//         <Text style={[styles.headerTitle, { color: theme.text }]}>{mainCategoryName}</Text>
+//         <View style={{ width: 40 }} />
+//       </View>
+
+//       {loading ? (
+//         <View style={styles.center}>
+//           <ActivityIndicator size="large" color={theme.primary} />
+//         </View>
+//       ) : groupedServices.length === 0 ? (
+//         <View style={styles.center}>
+//           <Ionicons name="search-outline" size={48} color={theme.textMuted} />
+//           <Text style={[styles.emptyText, { color: theme.textMuted }]}>No services found in this category.</Text>
+//         </View>
+//       ) : (
+//         <ScrollView
+//           showsVerticalScrollIndicator={false}
+//           contentContainerStyle={[styles.scrollContent, bottomNavPadding]}
+//         >
+//           {groupedServices.map((group, index) => (
+//             <View key={group.value} style={[styles.groupContainer, index > 0 && styles.groupSpacing]}>
+              
+//               {/* Section Heading */}
+//               <View style={styles.sectionHeader}>
+//                 <Text style={[styles.sectionTitle, { color: theme.text }]}>
+//                   {group.title}
+//                 </Text>
+//                 <View style={[styles.accentLine, { backgroundColor: COLORS.saffron }]} />
+//               </View>
+
+//               {/* Service Cards for this Group */}
+//               <View style={styles.cardsGrid}>
+//                 {group.data.map((service: Service) => (
+//                   <View key={service.id} style={styles.cardWrapper}>
+//                     <ServiceCard 
+//                       service={service} 
+//                       onPress={() => navigation.navigate("ServiceDetail", { service })} 
+//                     />
+//                   </View>
+//                 ))}
+//               </View>
+
+//             </View>
+//           ))}
+//         </ScrollView>
+//       )}
+//     </SafeAreaView>
+//   );
+// }
+
+// const styles = StyleSheet.create({
+//   header: {
+//     flexDirection: "row",
+//     alignItems: "center",
+//     justifyContent: "space-between",
+//     paddingHorizontal: 16,
+//     paddingVertical: 12,
+//     borderBottomWidth: 1,
+//   },
+//   backButton: {
+//     width: 40,
+//     height: 40,
+//     borderRadius: 20,
+//     justifyContent: "center",
+//     alignItems: "center",
+//   },
+//   headerTitle: {
+//     fontSize: 18,
+//     fontWeight: "800",
+//   },
+//   center: {
+//     flex: 1,
+//     justifyContent: "center",
+//     alignItems: "center",
+//     padding: 20,
+//   },
+//   emptyText: {
+//     marginTop: 12,
+//     fontSize: 16,
+//     textAlign: "center",
+//   },
+//   scrollContent: {
+//     paddingTop: 16,
+//     paddingBottom: 40,
+//     paddingHorizontal: 8,
+//   },
+//   groupContainer: {
+//     width: "100%",
+//   },
+//   groupSpacing: {
+//     marginTop: 32,
+//   },
+//   sectionHeader: {
+//     paddingHorizontal: 8,
+//     marginBottom: 16,
+//   },
+//   sectionTitle: {
+//     fontSize: 20,
+//     fontWeight: "800",
+//     letterSpacing: 0.5,
+//   },
+//   accentLine: {
+//     height: 3,
+//     width: 40,
+//     borderRadius: 2,
+//     marginTop: 4,
+//   },
+//   cardsGrid: {
+//     flexDirection: "row",
+//     flexWrap: "wrap",
+//     width: "100%",
+//   },
+//   cardWrapper: {
+//     width: "50%",
+//   },
+// });
+
+
+
+
+
+
+
+
+
+
 import React, { useEffect, useState, useCallback } from "react";
 import {
   View,
@@ -12,7 +212,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { RouteProp, useNavigation } from "@react-navigation/native";
 
-import { supabase } from "../lib/supabase";
 import { useTheme } from "../context/ThemeContext";
 import { useBottomNavPadding } from "../hooks/useBottomNavPadding";
 import { Service } from "../types/service";
@@ -20,100 +219,252 @@ import ServiceCard from "../components/ServiceCard";
 import { RootStackParamList } from "../navigation/AppNavigator";
 import { COLORS } from "../theme/colors";
 
+// ✅ Backend API
+import { getCustomerServices } from "../lib/backendClient";
+
 type Props = {
   route: RouteProp<RootStackParamList, "CategoryServices">;
 };
 
 export default function CategoryServicesScreen({ route }: Props) {
-  const { mainCategoryName, mainCategoryId, subCategories } = route.params;
+  const {
+    mainCategoryName,
+    mainCategoryId,
+    subCategories,
+  } = route.params;
+
   const { theme } = useTheme();
   const bottomNavPadding = useBottomNavPadding();
   const navigation = useNavigation<any>();
+
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchServices = useCallback(async () => {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from("services")
-      .select("*")
-      .eq("main_category_id", mainCategoryId)
-      .order("sort_order", { ascending: true });
+  // =========================================================
+  // FETCH SERVICES FROM BACKEND
+  // =========================================================
 
-    if (error) {
-      console.error("Error fetching services:", error);
-    } else {
+  const fetchServices = useCallback(async () => {
+    try {
+      setLoading(true);
+
+      console.log(
+        "📡 [CategoryServices] Fetching services for category:",
+        mainCategoryId
+      );
+
+      const data = await getCustomerServices({
+        main_category_id: mainCategoryId,
+      });
+
+      console.log(
+        "✅ [CategoryServices] Services received:",
+        data?.length ?? 0
+      );
+
       setServices(data || []);
+    } catch (error) {
+      console.error(
+        "❌ [CategoryServices] Backend services error:",
+        error
+      );
+
+      setServices([]);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, [mainCategoryId]);
+
+  // =========================================================
+  // LOAD SERVICES
+  // =========================================================
 
   useEffect(() => {
     fetchServices();
   }, [fetchServices]);
 
-  // Group services by subcategory
+  // =========================================================
+  // GROUP SERVICES BY SUBCATEGORY
+  // =========================================================
+
   const groupedServices = subCategories
     .map((cat: any) => ({
       title: cat.label,
       value: cat.value,
-      data: services.filter((s) => s.service_type === cat.value),
+      data: services.filter(
+        (service) => service.service_type === cat.value
+      ),
     }))
     .filter((group) => group.data.length > 0);
 
+  // =========================================================
+  // UI
+  // =========================================================
+
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={["top"]}>
-      <StatusBar barStyle={theme.background === "#FFFFFF" ? "dark-content" : "light-content"} />
-      
-      {/* Header */}
-      <View style={[styles.header, { borderBottomColor: theme.border }]}>
-        <Pressable 
+    <SafeAreaView
+      style={{
+        flex: 1,
+        backgroundColor: theme.background,
+      }}
+      edges={["top"]}
+    >
+      <StatusBar
+        barStyle={
+          theme.background === "#FFFFFF"
+            ? "dark-content"
+            : "light-content"
+        }
+      />
+
+      {/* =====================================================
+          HEADER
+      ===================================================== */}
+
+      <View
+        style={[
+          styles.header,
+          {
+            borderBottomColor: theme.border,
+          },
+        ]}
+      >
+        <Pressable
           onPress={() => navigation.goBack()}
-          style={[styles.backButton, { backgroundColor: theme.surfaceVariant }]}
+          style={[
+            styles.backButton,
+            {
+              backgroundColor: theme.surfaceVariant,
+            },
+          ]}
         >
-          <Ionicons name="arrow-back" size={24} color={theme.text} />
+          <Ionicons
+            name="arrow-back"
+            size={24}
+            color={theme.text}
+          />
         </Pressable>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>{mainCategoryName}</Text>
+
+        <Text
+          style={[
+            styles.headerTitle,
+            {
+              color: theme.text,
+            },
+          ]}
+        >
+          {mainCategoryName}
+        </Text>
+
         <View style={{ width: 40 }} />
       </View>
 
+      {/* =====================================================
+          LOADING
+      ===================================================== */}
+
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color={theme.primary} />
+          <ActivityIndicator
+            size="large"
+            color={theme.primary}
+          />
         </View>
       ) : groupedServices.length === 0 ? (
+        /* ===================================================
+           EMPTY
+        =================================================== */
+
         <View style={styles.center}>
-          <Ionicons name="search-outline" size={48} color={theme.textMuted} />
-          <Text style={[styles.emptyText, { color: theme.textMuted }]}>No services found in this category.</Text>
+          <Ionicons
+            name="search-outline"
+            size={48}
+            color={theme.textMuted}
+          />
+
+          <Text
+            style={[
+              styles.emptyText,
+              {
+                color: theme.textMuted,
+              },
+            ]}
+          >
+            No services found in this category.
+          </Text>
         </View>
       ) : (
+        /* ===================================================
+           SERVICES
+        =================================================== */
+
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={[styles.scrollContent, bottomNavPadding]}
+          contentContainerStyle={[
+            styles.scrollContent,
+            bottomNavPadding,
+          ]}
         >
           {groupedServices.map((group, index) => (
-            <View key={group.value} style={[styles.groupContainer, index > 0 && styles.groupSpacing]}>
-              
-              {/* Section Heading */}
+            <View
+              key={group.value}
+              style={[
+                styles.groupContainer,
+                index > 0 && styles.groupSpacing,
+              ]}
+            >
+              {/* =================================================
+                  SECTION HEADER
+              ================================================= */}
+
               <View style={styles.sectionHeader}>
-                <Text style={[styles.sectionTitle, { color: theme.text }]}>
+                <Text
+                  style={[
+                    styles.sectionTitle,
+                    {
+                      color: theme.text,
+                    },
+                  ]}
+                >
                   {group.title}
                 </Text>
-                <View style={[styles.accentLine, { backgroundColor: COLORS.saffron }]} />
+
+                <View
+                  style={[
+                    styles.accentLine,
+                    {
+                      backgroundColor: COLORS.saffron,
+                    },
+                  ]}
+                />
               </View>
 
-              {/* Service Cards for this Group */}
+              {/* =================================================
+                  SERVICE CARDS
+              ================================================= */}
+
               <View style={styles.cardsGrid}>
-                {group.data.map((service: Service) => (
-                  <View key={service.id} style={styles.cardWrapper}>
-                    <ServiceCard 
-                      service={service} 
-                      onPress={() => navigation.navigate("ServiceDetail", { service })} 
-                    />
-                  </View>
-                ))}
+                {group.data.map(
+                  (service: Service) => (
+                    <View
+                      key={service.id}
+                      style={styles.cardWrapper}
+                    >
+                      <ServiceCard
+                        service={service}
+                        onPress={() =>
+                          navigation.navigate(
+                            "ServiceDetail",
+                            {
+                              service,
+                            }
+                          )
+                        }
+                      />
+                    </View>
+                  )
+                )}
               </View>
-
             </View>
           ))}
         </ScrollView>
@@ -121,6 +472,10 @@ export default function CategoryServicesScreen({ route }: Props) {
     </SafeAreaView>
   );
 }
+
+// =============================================================
+// STYLES
+// =============================================================
 
 const styles = StyleSheet.create({
   header: {
@@ -131,6 +486,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderBottomWidth: 1,
   },
+
   backButton: {
     width: 40,
     height: 40,
@@ -138,52 +494,63 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+
   headerTitle: {
     fontSize: 18,
     fontWeight: "800",
   },
+
   center: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     padding: 20,
   },
+
   emptyText: {
     marginTop: 12,
     fontSize: 16,
     textAlign: "center",
   },
+
   scrollContent: {
     paddingTop: 16,
     paddingBottom: 40,
     paddingHorizontal: 8,
   },
+
   groupContainer: {
     width: "100%",
   },
+
   groupSpacing: {
     marginTop: 32,
   },
+
   sectionHeader: {
     paddingHorizontal: 8,
     marginBottom: 16,
   },
+
   sectionTitle: {
     fontSize: 20,
     fontWeight: "800",
     letterSpacing: 0.5,
   },
+
   accentLine: {
     height: 3,
     width: 40,
     borderRadius: 2,
     marginTop: 4,
   },
+
   cardsGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
     width: "100%",
   },
+
   cardWrapper: {
     width: "50%",
   },
