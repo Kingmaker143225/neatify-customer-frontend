@@ -174,6 +174,7 @@ package.json
 powershell.cmd
 PUSH_NOTIFICATION_README.md
 README.md
+supabase-frontend-audit.txt
 test_db.js
 test_filter.js
 tsconfig.json
@@ -4804,196 +4805,6 @@ export function useBookingCart() {
   if (!ctx) {
     throw new Error("useBookingCart must be used inside BookingCartProvider");
   }
-  return ctx;
-}
-</file>
-
-<file path="src/context/CartContext.tsx">
-import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
-
-import { supabase } from "../lib/supabase";
-import { Service } from "../types/service";
-
-export type CartItem = {
-  id: string; // ✅ cart row id (Supabase row id)
-  service_id: string;
-  title: string;
-  duration: string;
-  price: string;
-  image?: string;
-};
-
-type CartContextType = {
-  cartItems: CartItem[];
-  loadingCart: boolean;
-
-  fetchCart: () => Promise<void>;
-
-  // ✅ returns true if added successfully
-  addToCart: (service: Service) => Promise<boolean>;
-
-  // ✅ delete by service_id
-  removeFromCart: (service_id: string) => Promise<void>;
-
-  clearCart: () => Promise<void>;
-
-  isInCart: (service_id: string) => boolean;
-};
-
-const CartContext = createContext<CartContextType | null>(null);
-
-export function CartProvider({ children }: { children: React.ReactNode }) {
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
-  const [loadingCart, setLoadingCart] = useState(true);
-
-  // ======================================================
-  // FETCH CART
-  // ======================================================
-  const fetchCart = async () => {
-    setLoadingCart(true);
-    try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) {
-        setCartItems([]);
-        return;
-      }
-
-      const { data, error } = await supabase
-        .from("cart_items")
-        .select("id, service_id, title, duration, price, image")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-
-      setCartItems((data as any) || []);
-    } catch (err: any) {
-      console.log("fetchCart error:", err.message);
-    } finally {
-      setLoadingCart(false);
-    }
-  };
-
-  // ======================================================
-  // ADD TO CART (NO ALERT HERE ✅)
-  // ======================================================
-  const addToCart = async (service: Service) => {
-    try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) {
-        throw new Error("Please login to add items to cart.");
-      }
-
-      const { error } = await supabase.from("cart_items").insert({
-        user_id: user.id,
-        service_id: service.id,
-        title: service.title,
-        duration: service.duration,
-        price: service.price,
-        image: service.image,
-      });
-
-      if (error) {
-        // ✅ duplicate row unique constraint
-        if (error.code === "23505") {
-          throw new Error("Already in Cart");
-        }
-        throw error;
-      }
-
-      await fetchCart();
-      return true;
-    } catch (err: any) {
-      throw err;
-    }
-  };
-
-  // ======================================================
-  // REMOVE FROM CART (BY service_id ✅)
-  // ======================================================
-  const removeFromCart = async (service_id: string) => {
-    try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) return;
-
-      const { error } = await supabase
-        .from("cart_items")
-        .delete()
-        .eq("user_id", user.id)
-        .eq("service_id", service_id);
-
-      if (error) throw error;
-
-      await fetchCart();
-    } catch (err: any) {
-      throw err;
-    }
-  };
-
-  // ======================================================
-  // CLEAR CART
-  // ======================================================
-  const clearCart = async () => {
-    try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) return;
-
-      const { error } = await supabase
-        .from("cart_items")
-        .delete()
-        .eq("user_id", user.id);
-
-      if (error) throw error;
-
-      await fetchCart();
-    } catch (err: any) {
-      throw err;
-    }
-  };
-
-  // ======================================================
-  // CHECK IF IN CART
-  // ======================================================
-  const isInCart = (service_id: string) => {
-    return cartItems.some((x) => x.service_id === service_id);
-  };
-
-  // ✅ Auto fetch cart after app opens
-  useEffect(() => {
-    fetchCart();
-  }, []);
-
-  const value = useMemo(
-    () => ({
-      cartItems,
-      loadingCart,
-      fetchCart,
-      addToCart,
-      removeFromCart,
-      clearCart,
-      isInCart,
-    }),
-    [cartItems, loadingCart]
-  );
-
-  return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
-}
-
-export function useCart() {
-  const ctx = useContext(CartContext);
-  if (!ctx) throw new Error("useCart must be used inside CartProvider");
   return ctx;
 }
 </file>
@@ -22938,6 +22749,99 @@ Join our community of developers creating universal apps.
 - [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
 </file>
 
+<file path="supabase-frontend-audit.txt">
+Path                                                                                                    LineNumber Line                        
+----                                                                                                    ---------- ----                        
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\auth\useAuthListener.ts                     9     } = supabase.auth.onA...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\auth\useAuthListener.ts                    13         await supabase.au...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\auth\useAuthListener.ts                    14         await AsyncStorag...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\auth\useAuthListener.ts                    28         const { data: { s...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\auth\useAuthListener.ts                    35             await supabas...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\auth\useGoogleAuth.ts                      26 //   const { data, error ...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\auth\useGoogleAuth.ts                      94     const { data, error }...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\auth\useGoogleAuth.ts                     129       const { data: sessi...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\auth\useGoogleAuth.ts                     147               const { dat...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\components\CustomDrawerContent.tsx         46 //         } = await supa...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\components\CustomDrawerContent.tsx         63 //     } = supabase.auth....
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\components\CustomDrawerContent.tsx        122 //       const { error } ...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\components\CustomDrawerContent.tsx        146 //       await supabase.a...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\components\CustomDrawerContent.tsx        642         } = await supabas...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\components\CustomDrawerContent.tsx        659     } = supabase.auth.onA...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\components\CustomDrawerContent.tsx        713       await supabase.auth...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\components\CustomDrawerContent.tsx        730       await supabase.auth...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\components\Header.tsx                      59     supabase.auth.getSess...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\components\Header.tsx                      63     const { data: { subsc...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\context\CartContext.tsx                    46       } = await supabase....
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\context\CartContext.tsx                    76       } = await supabase....
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\context\CartContext.tsx                    82       const { error } = a...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\context\CartContext.tsx                   113       } = await supabase....
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\context\CartContext.tsx                   138       } = await supabase....
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\context\NotificationContext.tsx            49             const { data:...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\context\NotificationContext.tsx            61         const { data: aut...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\hooks\useAuthGuard.ts                      13 //             const { da...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\hooks\useAuthGuard.ts                      67       const { data: { ses...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\hooks\useAuthGuard.ts                     118     const { data: { sessi...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\hooks\useAuthGuard.ts                     148       const { data: { use...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\lib\backendClient.ts                       29 //   } = await supabase.a...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\lib\backendClient.ts                      329   } = await supabase.auth...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\screens\BookingDetailsScreen.tsx          196       let query = supabas...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\screens\BookingDetailsScreen.tsx          244       let { data, error }...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\screens\BookingDetailsScreen.tsx          365       const { data: { use...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\screens\BookingDetailsScreen.tsx          454         const { data: eli...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\screens\CheckoutScreen.tsx                446     const { data } = awai...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\screens\CheckoutScreen.tsx                996           await supabase....
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\screens\CheckoutScreen.tsx               1051       await supabase.from...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\screens\CompleteProfileScreen.tsx          56             const { data:...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\screens\CompleteProfileScreen.tsx         106             const { data:...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\screens\CompleteProfileScreen.tsx         110                 await sup...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\screens\CompleteProfileScreen.tsx         156             const { data:...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\screens\CompleteProfileScreen.tsx         175             const { error...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\screens\CompleteProfileScreen.tsx         198                 supabase....
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\screens\CompleteProfileScreen.tsx         206                 supabase....
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\screens\CompleteProfileScreen.tsx         213                 supabase....
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\screens\CompleteProfileScreen.tsx         222                 await sup...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\screens\CompleteProfileScreen.tsx         230                 await sup...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\screens\CompleteProfileScreen.tsx         238                 await sup...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\screens\HomeScreen.tsx                    122 //       const { data: { ...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\screens\HomeScreen.tsx                    138 //         await supabase...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\screens\HomeScreen.tsx                    149 //       const { data: { ...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\screens\HomeScreen.tsx                    164 //         await supabase...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\screens\HomeScreen.tsx                    187 //         let query = su...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\screens\HomeScreen.tsx                    213 //     const { data, erro...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\screens\HomeScreen.tsx                   1476       const { data: { ses...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\screens\HomeScreen.tsx                   1492         await supabase.au...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\screens\HomeScreen.tsx                   1503       const { data: { ses...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\screens\HomeScreen.tsx                   1518         await supabase.au...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\screens\HomeScreen.tsx                   1541         let query = supab...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\screens\HomeScreen.tsx                   1567   //   const { data, erro...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\screens\LocationAccessScreen.tsx           85       const { data: { ses...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\screens\LocationSearchScreen.tsx           30     const { data: { sessi...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\screens\LoginScreen.tsx                   318       const { data: { use...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\screens\LoginScreen.tsx                   364       const { data, error...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\screens\LoginScreen.tsx                   388       const { data, error...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\screens\LoginScreen.tsx                   401         const { error: si...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\screens\LoginScreen.tsx                   406         await checkProfil...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\screens\LoginScreen.tsx                   501       await supabase.auth...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\screens\LoginScreen.tsx                   515       await supabase.auth...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\screens\LoginScreen.tsx                   573         const { error: se...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\screens\LoginScreen.tsx                   584         } = await supabas...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\screens\MyBookingsScreen.tsx               48     } = await supabase.au...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\screens\ProfileScreen.tsx                 142 //       } = await supaba...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\screens\ProfileScreen.tsx                 187 //           await supaba...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\screens\ProfileScreen.tsx                 246 //       await supabase.a...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\screens\ProfileScreen.tsx                 329 //           await supaba...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\screens\ProfileScreen.tsx                1023       } = await supabase....
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\screens\ProfileScreen.tsx                1068           await supabase....
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\screens\ProfileScreen.tsx                1127       await supabase.auth...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\screens\ProfileScreen.tsx                1219           await supabase....
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\screens\ProfileScreen.tsx                1232           await supabase....
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\screens\ResetPasswordScreen.tsx            50             const { error...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\screens\ResetPasswordScreen.tsx            73             const { error...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\screens\ResetPasswordScreen.tsx            76             const { error...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\screens\ResetPasswordScreen.tsx            80             await supabas...
+C:\projects\customer_app_front-end\neatify_customerapp_anjiedits\src\screens\ScheduleScreen.tsx                524     const { data } = awai...
+</file>
+
 <file path="test_db.js">
 const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config({ path: '.env' });
@@ -25605,6 +25509,383 @@ const styles = StyleSheet.create({
 });
 </file>
 
+<file path="src/context/CartContext.tsx">
+// import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+
+// import { supabase } from "../lib/supabase";
+// import { Service } from "../types/service";
+
+// export type CartItem = {
+//   id: string; // ✅ cart row id (Supabase row id)
+//   service_id: string;
+//   title: string;
+//   duration: string;
+//   price: string;
+//   image?: string;
+// };
+
+// type CartContextType = {
+//   cartItems: CartItem[];
+//   loadingCart: boolean;
+
+//   fetchCart: () => Promise<void>;
+
+//   // ✅ returns true if added successfully
+//   addToCart: (service: Service) => Promise<boolean>;
+
+//   // ✅ delete by service_id
+//   removeFromCart: (service_id: string) => Promise<void>;
+
+//   clearCart: () => Promise<void>;
+
+//   isInCart: (service_id: string) => boolean;
+// };
+
+// const CartContext = createContext<CartContextType | null>(null);
+
+// export function CartProvider({ children }: { children: React.ReactNode }) {
+//   const [cartItems, setCartItems] = useState<CartItem[]>([]);
+//   const [loadingCart, setLoadingCart] = useState(true);
+
+//   // ======================================================
+//   // FETCH CART
+//   // ======================================================
+//   const fetchCart = async () => {
+//     setLoadingCart(true);
+//     try {
+//       const {
+//         data: { user },
+//       } = await supabase.auth.getUser();
+
+//       if (!user) {
+//         setCartItems([]);
+//         return;
+//       }
+
+//       const { data, error } = await supabase
+//         .from("cart_items")
+//         .select("id, service_id, title, duration, price, image")
+//         .eq("user_id", user.id)
+//         .order("created_at", { ascending: false });
+
+//       if (error) throw error;
+
+//       setCartItems((data as any) || []);
+//     } catch (err: any) {
+//       console.log("fetchCart error:", err.message);
+//     } finally {
+//       setLoadingCart(false);
+//     }
+//   };
+
+//   // ======================================================
+//   // ADD TO CART (NO ALERT HERE ✅)
+//   // ======================================================
+//   const addToCart = async (service: Service) => {
+//     try {
+//       const {
+//         data: { user },
+//       } = await supabase.auth.getUser();
+
+//       if (!user) {
+//         throw new Error("Please login to add items to cart.");
+//       }
+
+//       const { error } = await supabase.from("cart_items").insert({
+//         user_id: user.id,
+//         service_id: service.id,
+//         title: service.title,
+//         duration: service.duration,
+//         price: service.price,
+//         image: service.image,
+//       });
+
+//       if (error) {
+//         // ✅ duplicate row unique constraint
+//         if (error.code === "23505") {
+//           throw new Error("Already in Cart");
+//         }
+//         throw error;
+//       }
+
+//       await fetchCart();
+//       return true;
+//     } catch (err: any) {
+//       throw err;
+//     }
+//   };
+
+//   // ======================================================
+//   // REMOVE FROM CART (BY service_id ✅)
+//   // ======================================================
+//   const removeFromCart = async (service_id: string) => {
+//     try {
+//       const {
+//         data: { user },
+//       } = await supabase.auth.getUser();
+
+//       if (!user) return;
+
+//       const { error } = await supabase
+//         .from("cart_items")
+//         .delete()
+//         .eq("user_id", user.id)
+//         .eq("service_id", service_id);
+
+//       if (error) throw error;
+
+//       await fetchCart();
+//     } catch (err: any) {
+//       throw err;
+//     }
+//   };
+
+//   // ======================================================
+//   // CLEAR CART
+//   // ======================================================
+//   const clearCart = async () => {
+//     try {
+//       const {
+//         data: { user },
+//       } = await supabase.auth.getUser();
+
+//       if (!user) return;
+
+//       const { error } = await supabase
+//         .from("cart_items")
+//         .delete()
+//         .eq("user_id", user.id);
+
+//       if (error) throw error;
+
+//       await fetchCart();
+//     } catch (err: any) {
+//       throw err;
+//     }
+//   };
+
+//   // ======================================================
+//   // CHECK IF IN CART
+//   // ======================================================
+//   const isInCart = (service_id: string) => {
+//     return cartItems.some((x) => x.service_id === service_id);
+//   };
+
+//   // ✅ Auto fetch cart after app opens
+//   useEffect(() => {
+//     fetchCart();
+//   }, []);
+
+//   const value = useMemo(
+//     () => ({
+//       cartItems,
+//       loadingCart,
+//       fetchCart,
+//       addToCart,
+//       removeFromCart,
+//       clearCart,
+//       isInCart,
+//     }),
+//     [cartItems, loadingCart]
+//   );
+
+//   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
+// }
+
+// export function useCart() {
+//   const ctx = useContext(CartContext);
+//   if (!ctx) throw new Error("useCart must be used inside CartProvider");
+//   return ctx;
+// }
+
+
+
+
+
+
+
+
+
+
+
+
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+
+import {
+  addCustomerCartItem,
+  clearCustomerCart,
+  getCustomerCart,
+  removeCustomerCartItem,
+} from "../lib/backendClient";
+
+import { Service } from "../types/service";
+
+export type CartItem = {
+  id: string; // cart row id
+  service_id: string;
+  title: string;
+  duration: string;
+  price: string;
+  image?: string;
+};
+
+type CartContextType = {
+  cartItems: CartItem[];
+  loadingCart: boolean;
+
+  fetchCart: () => Promise<void>;
+
+  // returns true if added successfully
+  addToCart: (service: Service) => Promise<boolean>;
+
+  // delete by service_id
+  removeFromCart: (service_id: string) => Promise<void>;
+
+  clearCart: () => Promise<void>;
+
+  isInCart: (service_id: string) => boolean;
+};
+
+const CartContext = createContext<CartContextType | null>(null);
+
+export function CartProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [loadingCart, setLoadingCart] = useState(true);
+
+  // ======================================================
+  // FETCH CART
+  // ======================================================
+  const fetchCart = async () => {
+    setLoadingCart(true);
+
+    try {
+      const response = await getCustomerCart();
+
+      setCartItems((response.items || []) as CartItem[]);
+    } catch (err: any) {
+      console.log(
+        "fetchCart error:",
+        err?.message || err
+      );
+    } finally {
+      setLoadingCart(false);
+    }
+  };
+
+  // ======================================================
+  // ADD TO CART (NO ALERT HERE)
+  // ======================================================
+  const addToCart = async (
+    service: Service
+  ): Promise<boolean> => {
+    try {
+      if (!service?.id) {
+        throw new Error("Invalid service.");
+      }
+
+      await addCustomerCartItem(
+        String(service.id)
+      );
+
+      await fetchCart();
+
+      return true;
+    } catch (err: any) {
+      throw err;
+    }
+  };
+
+  // ======================================================
+  // REMOVE FROM CART (BY service_id)
+  // ======================================================
+  const removeFromCart = async (
+    service_id: string
+  ): Promise<void> => {
+    try {
+      if (!service_id) return;
+
+      await removeCustomerCartItem(
+        service_id
+      );
+
+      await fetchCart();
+    } catch (err: any) {
+      throw err;
+    }
+  };
+
+  // ======================================================
+  // CLEAR CART
+  // ======================================================
+  const clearCart = async (): Promise<void> => {
+    try {
+      await clearCustomerCart();
+
+      await fetchCart();
+    } catch (err: any) {
+      throw err;
+    }
+  };
+
+  // ======================================================
+  // CHECK IF IN CART
+  // ======================================================
+  const isInCart = (service_id: string) => {
+    return cartItems.some(
+      (x) => x.service_id === service_id
+    );
+  };
+
+  // ======================================================
+  // AUTO FETCH CART AFTER APP OPENS
+  // ======================================================
+  useEffect(() => {
+    fetchCart();
+  }, []);
+
+  const value = useMemo(
+    () => ({
+      cartItems,
+      loadingCart,
+      fetchCart,
+      addToCart,
+      removeFromCart,
+      clearCart,
+      isInCart,
+    }),
+    [cartItems, loadingCart]
+  );
+
+  return (
+    <CartContext.Provider value={value}>
+      {children}
+    </CartContext.Provider>
+  );
+}
+
+export function useCart() {
+  const ctx = useContext(CartContext);
+
+  if (!ctx) {
+    throw new Error(
+      "useCart must be used inside CartProvider"
+    );
+  }
+
+  return ctx;
+}
+</file>
+
 <file path="src/hooks/useAuthGuard.ts">
 // import { useNavigation } from "@react-navigation/native";
 // import { useState } from "react";
@@ -25794,599 +26075,6 @@ export function useProfileGuard(redirectTo: string = 'CompleteProfile') {
     profileComplete,
     checkProfile,
   };
-}
-</file>
-
-<file path="src/lib/backendClient.ts">
-// import { supabase } from "./supabase";
-
-// const API_BASE_URL = (
-//   process.env.EXPO_PUBLIC_API_URL ||
-//   process.env.EXPO_PUBLIC_BACKEND_URL ||
-//   ""
-// ).trim();
-
-// console.log("🔥 CUSTOMER API BASE URL:", API_BASE_URL);
-
-// if (!API_BASE_URL) {
-//   console.warn(
-//     "⚠️ [Backend] EXPO_PUBLIC_API_URL is missing."
-//   );
-// }
-
-// function buildUrl(path: string) {
-//   const base = API_BASE_URL.replace(/\/+$/, "");
-//   const cleanPath = path.startsWith("/")
-//     ? path
-//     : `/${path}`;
-
-//   return `${base}${cleanPath}`;
-// }
-
-// async function getAccessToken(): Promise<string | null> {
-//   const {
-//     data: { session },
-//   } = await supabase.auth.getSession();
-
-//   return session?.access_token ?? null;
-// }
-
-// async function request<T>(
-//   path: string,
-//   options: RequestInit = {}
-// ): Promise<T> {
-//   console.log(`📡 [Backend] Request: ${options.method || 'GET'} ${path}`);
-  
-//   const accessToken = await getAccessToken();
-//   console.log(`📡 [Backend] Access token: ${accessToken ? '✅ Present' : '❌ Missing'}`);
-
-//   const headers = new Headers(
-//     options.headers || {}
-//   );
-
-//   headers.set("Content-Type", "application/json");
-
-//   if (accessToken) {
-//     headers.set(
-//       "Authorization",
-//       `Bearer ${accessToken}`
-//     );
-//     console.log("📡 [Backend] Authorization header set");
-//   }
-
-//   const url = buildUrl(path);
-//   console.log(`📡 [Backend] Full URL: ${url}`);
-
-//   const response = await fetch(
-//     url,
-//     {
-//       ...options,
-//       headers,
-//     }
-//   );
-
-//   console.log(`📡 [Backend] Response status: ${response.status}`);
-
-//   const text = await response.text();
-//   console.log(`📡 [Backend] Response body: ${text.substring(0, 200)}${text.length > 200 ? '...' : ''}`);
-
-//   let data: any = null;
-
-//   try {
-//     data = text ? JSON.parse(text) : null;
-//   } catch {
-//     data = text;
-//   }
-
-//   if (!response.ok) {
-//     const detail =
-//       data?.detail ||
-//       data?.message ||
-//       `Backend request failed: ${response.status}`;
-
-//     console.error(`❌ [Backend] Request failed: ${detail}`);
-//     throw new Error(detail);
-//   }
-
-//   console.log(`✅ [Backend] Request successful`);
-//   return data as T;
-// }
-
-
-// // =========================================================
-// // CUSTOMER AUTH
-// // =========================================================
-
-// export async function customerLogin(
-//   email: string,
-//   password: string
-// ) {
-//   console.log("📡 [Backend] customerLogin called");
-//   console.log("📡 [Backend] API_BASE_URL:", API_BASE_URL);
-
-//   return request<{
-//     access_token: string;
-//     refresh_token: string;
-//     token_type: string;
-//     user_id: string;
-//     email: string;
-//     profile_exists: boolean;
-//   }>("/api/v1/customer/auth/login", {
-//     method: "POST",
-//     body: JSON.stringify({
-//       email,
-//       password,
-//     }),
-//   });
-// }
-
-// export async function customerSignup(
-//   fullName: string,
-//   email: string,
-//   phone: string,
-//   password: string
-// ) {
-//   console.log("📡 [Backend] customerSignup called");
-  
-//   return request<{
-//     user_id: string;
-//     email: string;
-//     profile_created: boolean;
-//     email_confirmation_required: boolean;
-//     message: string;
-//   }>("/api/v1/customer/auth/signup", {
-//     method: "POST",
-//     body: JSON.stringify({
-//       full_name: fullName,
-//       email,
-//       phone,
-//       password,
-//     }),
-//   });
-// }
-
-// export async function getCustomerMe() {
-//   console.log("📡 [Backend] getCustomerMe called");
-  
-//   return request<{
-//     id: string;
-//     email: string;
-//     email_confirmed: boolean;
-//     profile_exists: boolean;
-//     profile_complete: boolean;
-//     profile: any | null;
-//   }>("/api/v1/customer/auth/me");
-// }
-
-// export async function getCustomerProfileCompleteness() {
-//   console.log("📡 [Backend] getCustomerProfileCompleteness called");
-  
-//   return request<{
-//     profile_exists: boolean;
-//     profile_complete: boolean;
-//     email_confirmed: boolean;
-//     missing_fields: string[];
-//   }>("/api/v1/customer/auth/profile-completeness");
-// }
-
-// export async function customerLogout() {
-//   console.log("🔴🔴🔴 [Backend] customerLogout() function called 🔴🔴🔴");
-//   console.log("📡 [Backend] API_BASE_URL:", API_BASE_URL);
-//   console.log("📡 [Backend] Full URL:", buildUrl("/api/v1/customer/auth/logout"));
-  
-//   try {
-//     const result = await request<{
-//       success: boolean;
-//       message: string;
-//     }>("/api/v1/customer/auth/logout", {
-//       method: "POST",
-//     });
-    
-//     console.log("✅ [Backend] customerLogout() response:", result);
-//     return result;
-//   } catch (error) {
-//     console.error("❌ [Backend] customerLogout() error:", error);
-//     throw error;
-//   }
-// }
-
-
-// // =========================================================
-// // CUSTOMER CATEGORIES
-// // =========================================================
-
-// export async function getCustomerCategories() {
-//   console.log("📡 [Backend] getCustomerCategories called");
-  
-//   return request<any[]>(
-//     "/api/v1/customer/categories"
-//   );
-// }
-
-
-// // =========================================================
-// // CUSTOMER SERVICES
-// // =========================================================
-
-// export async function getCustomerServices(
-//   params?: {
-//     main_category_id?: string;
-//     service_type?: string;
-//   }
-// ) {
-//   console.log("📡 [Backend] getCustomerServices called", params);
-  
-//   const searchParams =
-//     new URLSearchParams();
-
-//   if (params?.main_category_id) {
-//     searchParams.set(
-//       "main_category_id",
-//       params.main_category_id
-//     );
-//   }
-
-//   if (params?.service_type) {
-//     searchParams.set(
-//       "service_type",
-//       params.service_type
-//     );
-//   }
-
-//   const query =
-//     searchParams.toString();
-
-//   return request<any[]>(
-//     `/api/v1/customer/services${
-//       query ? `?${query}` : ""
-//     }`
-//   );
-// }
-
-// export async function getCustomerServiceById(
-//   serviceId: string
-// ) {
-//   console.log("📡 [Backend] getCustomerServiceById called", serviceId);
-  
-//   return request<any>(
-//     `/api/v1/customer/services/${encodeURIComponent(
-//       serviceId
-//     )}`
-//   );
-// }
-
-// export async function getCustomerServiceBySlug(
-//   slug: string
-// ) {
-//   console.log("📡 [Backend] getCustomerServiceBySlug called", slug);
-  
-//   return request<any>(
-//     `/api/v1/customer/services/slug/${encodeURIComponent(
-//       slug
-//     )}`
-//   );
-// }
-
-
-// // =========================================================
-// // CUSTOMER ADD-ONS
-// // =========================================================
-
-// export async function getCustomerAddOns(
-//   serviceType?: string
-// ) {
-//   console.log("📡 [Backend] getCustomerAddOns called", serviceType);
-  
-//   const query = serviceType
-//     ? `?service_type=${encodeURIComponent(
-//         serviceType
-//       )}`
-//     : "";
-
-//   return request<any[]>(
-//     `/api/v1/customer/add-ons${query}`
-//   );
-// }
-
-
-
-
-
-
-
-
-
-
-
-import { supabase } from "./supabase";
-
-const API_BASE_URL = (
-  process.env.EXPO_PUBLIC_API_URL ||
-  process.env.EXPO_PUBLIC_BACKEND_URL ||
-  ""
-).trim();
-
-console.log("🔥 CUSTOMER API BASE URL:", API_BASE_URL);
-
-if (!API_BASE_URL) {
-  console.warn(
-    "⚠️ [Backend] EXPO_PUBLIC_API_URL is missing."
-  );
-}
-
-function buildUrl(path: string) {
-  const base = API_BASE_URL.replace(/\/+$/, "");
-  const cleanPath = path.startsWith("/")
-    ? path
-    : `/${path}`;
-
-  return `${base}${cleanPath}`;
-}
-
-async function getAccessToken(): Promise<string | null> {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  return session?.access_token ?? null;
-}
-
-async function request<T>(
-  path: string,
-  options: RequestInit = {}
-): Promise<T> {
-  console.log(`📡 [Backend] Request: ${options.method || 'GET'} ${path}`);
-  
-  const accessToken = await getAccessToken();
-  console.log(`📡 [Backend] Access token: ${accessToken ? '✅ Present' : '❌ Missing'}`);
-
-  const headers = new Headers(
-    options.headers || {}
-  );
-
-  headers.set("Content-Type", "application/json");
-
-  if (accessToken) {
-    headers.set(
-      "Authorization",
-      `Bearer ${accessToken}`
-    );
-    console.log("📡 [Backend] Authorization header set");
-  }
-
-  const url = buildUrl(path);
-  console.log(`📡 [Backend] Full URL: ${url}`);
-
-  const response = await fetch(
-    url,
-    {
-      ...options,
-      headers,
-    }
-  );
-
-  console.log(`📡 [Backend] Response status: ${response.status}`);
-
-  const text = await response.text();
-  console.log(`📡 [Backend] Response body: ${text.substring(0, 200)}${text.length > 200 ? '...' : ''}`);
-
-  let data: any = null;
-
-  try {
-    data = text ? JSON.parse(text) : null;
-  } catch {
-    data = text;
-  }
-
-  if (!response.ok) {
-    const detail =
-      data?.detail ||
-      data?.message ||
-      `Backend request failed: ${response.status}`;
-
-    console.error(`❌ [Backend] Request failed: ${detail}`);
-    throw new Error(detail);
-  }
-
-  console.log(`✅ [Backend] Request successful`);
-  return data as T;
-}
-
-
-// =========================================================
-// CUSTOMER AUTH
-// =========================================================
-
-export async function customerLogin(
-  email: string,
-  password: string
-) {
-  console.log("📡 [Backend] customerLogin called");
-  console.log("📡 [Backend] API_BASE_URL:", API_BASE_URL);
-
-  return request<{
-    access_token: string;
-    refresh_token: string;
-    token_type: string;
-    user_id: string;
-    email: string;
-    profile_exists: boolean;
-  }>("/api/v1/customer/auth/login", {
-    method: "POST",
-    body: JSON.stringify({
-      email,
-      password,
-    }),
-  });
-}
-
-export async function customerSignup(
-  fullName: string,
-  email: string,
-  phone: string,
-  password: string
-) {
-  console.log("📡 [Backend] customerSignup called");
-  
-  return request<{
-    user_id: string;
-    email: string;
-    profile_created: boolean;
-    email_confirmation_required: boolean;
-    message: string;
-  }>("/api/v1/customer/auth/signup", {
-    method: "POST",
-    body: JSON.stringify({
-      full_name: fullName,
-      email,
-      phone,
-      password,
-    }),
-  });
-}
-
-export async function getCustomerMe() {
-  console.log("📡 [Backend] getCustomerMe called");
-  
-  return request<{
-    id: string;
-    email: string;
-    email_confirmed: boolean;
-    profile_exists: boolean;
-    profile_complete: boolean;
-    profile: any | null;
-  }>("/api/v1/customer/auth/me");
-}
-
-export async function getCustomerProfileCompleteness() {
-  console.log("📡 [Backend] getCustomerProfileCompleteness called");
-  
-  return request<{
-    profile_exists: boolean;
-    profile_complete: boolean;
-    email_confirmed: boolean;
-    missing_fields: string[];
-  }>("/api/v1/customer/auth/profile-completeness");
-}
-
-export async function customerLogout() {
-  console.log("🔴🔴🔴 [Backend] customerLogout() function called 🔴🔴🔴");
-  console.log("📡 [Backend] API_BASE_URL:", API_BASE_URL);
-  console.log("📡 [Backend] Full URL:", buildUrl("/api/v1/customer/auth/logout"));
-  console.log("📡 [Backend] About to make fetch request...");
-  
-  try {
-    const result = await request<{
-      success: boolean;
-      message: string;
-    }>("/api/v1/customer/auth/logout", {
-      method: "POST",
-    });
-    
-    console.log("✅ [Backend] customerLogout() response:", result);
-    return result;
-  } catch (error) {
-    console.error("❌ [Backend] customerLogout() error:", error);
-    throw error;
-  }
-}
-
-
-// =========================================================
-// CUSTOMER CATEGORIES
-// =========================================================
-
-export async function getCustomerCategories() {
-  console.log("📡 [Backend] getCustomerCategories called");
-  
-  return request<any[]>(
-    "/api/v1/customer/categories"
-  );
-}
-
-
-// =========================================================
-// CUSTOMER SERVICES
-// =========================================================
-
-export async function getCustomerServices(
-  params?: {
-    main_category_id?: string;
-    service_type?: string;
-  }
-) {
-  console.log("📡 [Backend] getCustomerServices called", params);
-  
-  const searchParams =
-    new URLSearchParams();
-
-  if (params?.main_category_id) {
-    searchParams.set(
-      "main_category_id",
-      params.main_category_id
-    );
-  }
-
-  if (params?.service_type) {
-    searchParams.set(
-      "service_type",
-      params.service_type
-    );
-  }
-
-  const query =
-    searchParams.toString();
-
-  return request<any[]>(
-    `/api/v1/customer/services${
-      query ? `?${query}` : ""
-    }`
-  );
-}
-
-export async function getCustomerServiceById(
-  serviceId: string
-) {
-  console.log("📡 [Backend] getCustomerServiceById called", serviceId);
-  
-  return request<any>(
-    `/api/v1/customer/services/${encodeURIComponent(
-      serviceId
-    )}`
-  );
-}
-
-export async function getCustomerServiceBySlug(
-  slug: string
-) {
-  console.log("📡 [Backend] getCustomerServiceBySlug called", slug);
-  
-  return request<any>(
-    `/api/v1/customer/services/slug/${encodeURIComponent(
-      slug
-    )}`
-  );
-}
-
-
-// =========================================================
-// CUSTOMER ADD-ONS
-// =========================================================
-
-export async function getCustomerAddOns(
-  serviceType?: string
-) {
-  console.log("📡 [Backend] getCustomerAddOns called", serviceType);
-  
-  const query = serviceType
-    ? `?service_type=${encodeURIComponent(
-        serviceType
-      )}`
-    : "";
-
-  return request<any[]>(
-    `/api/v1/customer/add-ons${query}`
-  );
 }
 </file>
 
@@ -34218,6 +33906,407 @@ export default function ServiceDetailScreen({ route }: Props) {
       </ScrollView>
       <FloatingCartSummary />
     </View>
+  );
+}
+</file>
+
+<file path="src/lib/backendClient.ts">
+import { supabase } from "./supabase";
+
+const API_BASE_URL = (
+  process.env.EXPO_PUBLIC_API_URL ||
+  process.env.EXPO_PUBLIC_BACKEND_URL ||
+  ""
+).trim();
+
+console.log("🔥 CUSTOMER API BASE URL:", API_BASE_URL);
+
+if (!API_BASE_URL) {
+  console.warn(
+    "⚠️ [Backend] EXPO_PUBLIC_API_URL is missing."
+  );
+}
+
+function buildUrl(path: string) {
+  const base = API_BASE_URL.replace(/\/+$/, "");
+  const cleanPath = path.startsWith("/")
+    ? path
+    : `/${path}`;
+
+  return `${base}${cleanPath}`;
+}
+
+async function getAccessToken(): Promise<string | null> {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  return session?.access_token ?? null;
+}
+
+async function request<T>(
+  path: string,
+  options: RequestInit = {}
+): Promise<T> {
+  console.log(`📡 [Backend] Request: ${options.method || 'GET'} ${path}`);
+  
+  const accessToken = await getAccessToken();
+  console.log(`📡 [Backend] Access token: ${accessToken ? '✅ Present' : '❌ Missing'}`);
+
+  const headers = new Headers(
+    options.headers || {}
+  );
+
+  headers.set("Content-Type", "application/json");
+
+  if (accessToken) {
+    headers.set(
+      "Authorization",
+      `Bearer ${accessToken}`
+    );
+    console.log("📡 [Backend] Authorization header set");
+  }
+
+  const url = buildUrl(path);
+  console.log(`📡 [Backend] Full URL: ${url}`);
+
+  const response = await fetch(
+    url,
+    {
+      ...options,
+      headers,
+    }
+  );
+
+  console.log(`📡 [Backend] Response status: ${response.status}`);
+
+  const text = await response.text();
+  console.log(`📡 [Backend] Response body: ${text.substring(0, 200)}${text.length > 200 ? '...' : ''}`);
+
+  let data: any = null;
+
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    data = text;
+  }
+
+  if (!response.ok) {
+    const detail =
+      data?.detail ||
+      data?.message ||
+      `Backend request failed: ${response.status}`;
+
+    console.error(`❌ [Backend] Request failed: ${detail}`);
+    throw new Error(detail);
+  }
+
+  console.log(`✅ [Backend] Request successful`);
+  return data as T;
+}
+
+
+// =========================================================
+// CUSTOMER AUTH
+// =========================================================
+
+export async function customerLogin(
+  email: string,
+  password: string
+) {
+  console.log("📡 [Backend] customerLogin called");
+  console.log("📡 [Backend] API_BASE_URL:", API_BASE_URL);
+
+  return request<{
+    access_token: string;
+    refresh_token: string;
+    token_type: string;
+    user_id: string;
+    email: string;
+    profile_exists: boolean;
+  }>("/api/v1/customer/auth/login", {
+    method: "POST",
+    body: JSON.stringify({
+      email,
+      password,
+    }),
+  });
+}
+
+export async function customerSignup(
+  fullName: string,
+  email: string,
+  phone: string,
+  password: string
+) {
+  console.log("📡 [Backend] customerSignup called");
+  
+  return request<{
+    user_id: string;
+    email: string;
+    profile_created: boolean;
+    email_confirmation_required: boolean;
+    message: string;
+  }>("/api/v1/customer/auth/signup", {
+    method: "POST",
+    body: JSON.stringify({
+      full_name: fullName,
+      email,
+      phone,
+      password,
+    }),
+  });
+}
+
+export async function getCustomerMe() {
+  console.log("📡 [Backend] getCustomerMe called");
+  
+  return request<{
+    id: string;
+    email: string;
+    email_confirmed: boolean;
+    profile_exists: boolean;
+    profile_complete: boolean;
+    profile: any | null;
+  }>("/api/v1/customer/auth/me");
+}
+
+export async function getCustomerProfileCompleteness() {
+  console.log("📡 [Backend] getCustomerProfileCompleteness called");
+  
+  return request<{
+    profile_exists: boolean;
+    profile_complete: boolean;
+    email_confirmed: boolean;
+    missing_fields: string[];
+  }>("/api/v1/customer/auth/profile-completeness");
+}
+
+export async function customerLogout() {
+  console.log("🔴🔴🔴 [Backend] customerLogout() function called 🔴🔴🔴");
+  console.log("📡 [Backend] API_BASE_URL:", API_BASE_URL);
+  console.log("📡 [Backend] Full URL:", buildUrl("/api/v1/customer/auth/logout"));
+  console.log("📡 [Backend] About to make fetch request...");
+  
+  try {
+    const result = await request<{
+      success: boolean;
+      message: string;
+    }>("/api/v1/customer/auth/logout", {
+      method: "POST",
+    });
+    
+    console.log("✅ [Backend] customerLogout() response:", result);
+    return result;
+  } catch (error) {
+    console.error("❌ [Backend] customerLogout() error:", error);
+    throw error;
+  }
+}
+
+
+// =========================================================
+// CUSTOMER CATEGORIES
+// =========================================================
+
+export async function getCustomerCategories() {
+  console.log("📡 [Backend] getCustomerCategories called");
+  
+  return request<any[]>(
+    "/api/v1/customer/categories"
+  );
+}
+
+
+// =========================================================
+// CUSTOMER SERVICES
+// =========================================================
+
+export async function getCustomerServices(
+  params?: {
+    main_category_id?: string;
+    service_type?: string;
+  }
+) {
+  console.log("📡 [Backend] getCustomerServices called", params);
+  
+  const searchParams =
+    new URLSearchParams();
+
+  if (params?.main_category_id) {
+    searchParams.set(
+      "main_category_id",
+      params.main_category_id
+    );
+  }
+
+  if (params?.service_type) {
+    searchParams.set(
+      "service_type",
+      params.service_type
+    );
+  }
+
+  const query =
+    searchParams.toString();
+
+  return request<any[]>(
+    `/api/v1/customer/services${
+      query ? `?${query}` : ""
+    }`
+  );
+}
+
+export async function getCustomerServiceById(
+  serviceId: string
+) {
+  console.log("📡 [Backend] getCustomerServiceById called", serviceId);
+  
+  return request<any>(
+    `/api/v1/customer/services/${encodeURIComponent(
+      serviceId
+    )}`
+  );
+}
+
+export async function getCustomerServiceBySlug(
+  slug: string
+) {
+  console.log("📡 [Backend] getCustomerServiceBySlug called", slug);
+  
+  return request<any>(
+    `/api/v1/customer/services/slug/${encodeURIComponent(
+      slug
+    )}`
+  );
+}
+
+
+// =========================================================
+// CUSTOMER ADD-ONS
+// =========================================================
+
+export async function getCustomerAddOns(
+  serviceType?: string
+) {
+  console.log("📡 [Backend] getCustomerAddOns called", serviceType);
+  
+  const query = serviceType
+    ? `?service_type=${encodeURIComponent(
+        serviceType
+      )}`
+    : "";
+
+  return request<any[]>(
+    `/api/v1/customer/add-ons${query}`
+  );
+}
+
+
+// =========================================================
+// CUSTOMER CART
+// =========================================================
+
+export type CustomerCartItem = {
+  id: string;
+  service_id: string;
+  title: string;
+  duration: string | null;
+  price: string;
+  image: string | null;
+  created_at: string | null;
+};
+
+export type CustomerCartResponse = {
+  success: boolean;
+  items: CustomerCartItem[];
+  message: string;
+};
+
+export type CustomerCartAddResponse = {
+  success: boolean;
+  item: CustomerCartItem;
+  message: string;
+};
+
+export type CustomerCartActionResponse = {
+  success: boolean;
+  message: string;
+};
+
+
+// =========================================================
+// GET CUSTOMER CART
+// =========================================================
+
+export async function getCustomerCart() {
+  console.log("📡 [Backend] getCustomerCart called");
+
+  return request<CustomerCartResponse>(
+    "/api/v1/customer/cart"
+  );
+}
+
+
+// =========================================================
+// ADD SERVICE TO CUSTOMER CART
+// =========================================================
+
+export async function addCustomerCartItem(
+  serviceId: string
+) {
+  console.log(
+    "📡 [Backend] addCustomerCartItem called:",
+    serviceId
+  );
+
+  return request<CustomerCartAddResponse>(
+    "/api/v1/customer/cart",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        service_id: serviceId,
+      }),
+    }
+  );
+}
+
+
+// =========================================================
+// REMOVE SERVICE FROM CUSTOMER CART
+// =========================================================
+
+export async function removeCustomerCartItem(
+  serviceId: string
+) {
+  console.log(
+    "📡 [Backend] removeCustomerCartItem called:",
+    serviceId
+  );
+
+  return request<CustomerCartActionResponse>(
+    `/api/v1/customer/cart/${encodeURIComponent(
+      serviceId
+    )}`,
+    {
+      method: "DELETE",
+    }
+  );
+}
+
+
+// =========================================================
+// CLEAR CUSTOMER CART
+// =========================================================
+
+export async function clearCustomerCart() {
+  console.log("📡 [Backend] clearCustomerCart called");
+
+  return request<CustomerCartActionResponse>(
+    "/api/v1/customer/cart",
+    {
+      method: "DELETE",
+    }
   );
 }
 </file>

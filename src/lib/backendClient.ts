@@ -396,3 +396,260 @@ export async function clearCustomerCart() {
     }
   );
 }
+
+// =========================================================
+// CUSTOMER BOOKINGS
+// =========================================================
+
+export type CustomerBookingServiceItem = {
+  id: string;
+  quantity: number;
+};
+
+export type CustomerBookingAddOnItem = {
+  id: string;
+  quantity: number;
+};
+
+export type CustomerBookingCreateRequest = {
+  customer_name: string;
+  email: string;
+  phone_number: string;
+  full_address: string;
+
+  services: CustomerBookingServiceItem[];
+
+  add_ons?: CustomerBookingAddOnItem[];
+
+  booking_date: string;
+  booking_time: string;
+
+  latitude?: number | null;
+  longitude?: number | null;
+
+  location_link?: string | null;
+};
+
+export type CustomerBookingCreateResponse = {
+  success: boolean;
+  booking_id: string;
+  message: string;
+  payment_status: string;
+  payment_verified: boolean;
+  total_amount: number;
+};
+
+export type CustomerBooking = {
+  id?: string;
+  booking_id?: string;
+
+  customer_name?: string;
+  email?: string;
+  phone_number?: string;
+  full_address?: string;
+
+  services?: any[];
+
+  booking_date?: string;
+  booking_time?: string;
+
+  assigned_staff_email?: string | null;
+
+  total_amount?: number;
+
+  payment_status?: string | null;
+  payment_verified?: boolean;
+
+  razorpay_order_id?: string | null;
+  razorpay_payment_id?: string | null;
+
+  payment_method?: string | null;
+
+  assigned_staff_name?: string | null;
+  assigned_staff_phone?: string | null;
+
+  hub_name?: string | null;
+
+  latitude?: number | null;
+  longitude?: number | null;
+
+  location_link?: string | null;
+
+  work_status?: string | null;
+
+  created_at?: string | null;
+  updated_at?: string | null;
+
+  [key: string]: any;
+};
+
+export type CustomerBookingsResponse = {
+  success: boolean;
+  items: CustomerBooking[];
+  message: string;
+};
+
+
+// =========================================================
+// CREATE CUSTOMER BOOKING
+// =========================================================
+
+export async function createCustomerBooking(
+  booking: CustomerBookingCreateRequest
+) {
+  console.log(
+    "📡 [Backend] createCustomerBooking called"
+  );
+
+  console.log(
+    "📡 [Backend] Booking payload:",
+    JSON.stringify(booking, null, 2)
+  );
+
+  return request<CustomerBookingCreateResponse>(
+    "/api/v1/customer/bookings",
+    {
+      method: "POST",
+      body: JSON.stringify(booking),
+    }
+  );
+}
+
+
+// =========================================================
+// GET CUSTOMER BOOKINGS
+// =========================================================
+
+export async function getCustomerBookings() {
+  console.log(
+    "📡 [Backend] getCustomerBookings called"
+  );
+
+  return request<CustomerBookingsResponse>(
+    "/api/v1/customer/bookings"
+  );
+}
+
+
+// =========================================================
+// CUSTOMER PAYMENT
+// =========================================================
+
+export type CustomerPaymentCreateOrderRequest = {
+  booking_id: string;
+};
+
+export type CustomerPaymentCreateOrderResponse = {
+  success: boolean;
+  booking_id: string;
+  order_id: string;
+  amount: number;
+  currency: string;
+  key_id: string;
+  message: string;
+};
+
+export type CustomerPaymentVerifyRequest = {
+  booking_id: string;
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+};
+
+export type CustomerPaymentVerifyResponse = {
+  success: boolean;
+  booking_id: string;
+  payment_status: string;
+  payment_verified: boolean;
+  message: string;
+};
+
+
+// =========================================================
+// CREATE RAZORPAY ORDER
+// =========================================================
+
+export async function createCustomerPaymentOrder(
+  bookingId: string
+) {
+  console.log(
+    "📡 [Backend] createCustomerPaymentOrder called:",
+    bookingId
+  );
+
+  const payload: CustomerPaymentCreateOrderRequest = {
+    booking_id: bookingId,
+  };
+
+  console.log(
+    "📡 [Backend] Payment order payload:",
+    payload
+  );
+
+  return request<CustomerPaymentCreateOrderResponse>(
+    "/api/v1/customer/payment/create-order",
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }
+  );
+}
+
+
+// =========================================================
+// VERIFY RAZORPAY PAYMENT
+// =========================================================
+
+export async function verifyCustomerPayment(
+  payment: CustomerPaymentVerifyRequest
+) {
+  console.log(
+    "📡 [Backend] verifyCustomerPayment called"
+  );
+
+  console.log(
+    "📡 [Backend] Payment verification payload:",
+    JSON.stringify(payment, null, 2)
+  );
+
+  return request<CustomerPaymentVerifyResponse>(
+    "/api/v1/customer/payment/verify",
+    {
+      method: "POST",
+      body: JSON.stringify(payment),
+    }
+  );
+}
+
+// =========================================================
+// CUSTOMER WHY CHOOSE US
+// =========================================================
+
+export type CustomerWhyChooseUsResponse = {
+  title: string;
+  subtitle: string;
+  features: {
+    icon: string;
+    iconFamily:
+      | 'Ionicons'
+      | 'MaterialCommunityIcons';
+    title: string;
+    description: string;
+  }[];
+  bottom_title: string;
+  bottom_desc: string;
+  bottom_button_text: string;
+};
+
+export async function getCustomerWhyChooseUs() {
+  console.log(
+    '📡 [Backend] getCustomerWhyChooseUs called'
+  );
+
+  return request<CustomerWhyChooseUsResponse>(
+    '/api/v1/customer/why-choose-us'
+  );
+}
+
+
+
