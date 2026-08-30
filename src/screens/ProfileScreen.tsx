@@ -908,7 +908,11 @@ import { useBottomNavPadding } from "../hooks/useBottomNavPadding";
 import { useLanguage } from "../context/LanguageContext";
 import { useTheme } from "../context/ThemeContext";
 import { useNotification } from "../hooks/useNotification";
-import { supabase } from "../lib/supabase";
+// import { supabase } from "../lib/supabase";
+import {
+  getCustomerProfile,
+  updateCustomerProfile,
+} from "../lib/backendClient";
 import { customerLogout } from "../lib/backendClient"; // ✅ ADD THIS IMPORT
 import { COLORS } from "../theme/colors";
 import { registerForPushNotificationsAsync, removePushTokenFromSupabase } from "../utils/pushNotifications";
@@ -1017,73 +1021,58 @@ export default function ProfileScreen() {
   const [walletBalance, setWalletBalance] = useState<number>(0);
 
   const fetchProfile = useCallback(async () => {
-    try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+  try {
+    setLoading(true);
 
-      if (!user) return;
+    console.log("📡 [ProfileScreen] Fetching customer profile from backend...");
 
-      setUserId(user.id);
+    const profile = await getCustomerProfile();
 
-      const { data, error } = await supabase
-        .from("profile")
-        .select("*")
-        .eq("id", user.id)
-        .maybeSingle();
+    console.log(
+      "✅ [ProfileScreen] Backend profile:",
+      profile
+    );
 
-      if (data) {
-        let currentCode = data.referral_code;
-
-        // If no referral code exists, generate and save one
-        if (!currentCode) {
-          currentCode = generateReferralCode(data.full_name || user.email || "User");
-          await supabase
-            .from("profile")
-            .update({ referral_code: currentCode })
-            .eq("id", user.id);
-        }
-
-        setReferralCode(currentCode);
-
-        setFormData({
-          full_name: data.full_name || "",
-          email: data.email || user.email || "",
-          phone: data.phone || "",
-          address: data.address || "",
-          pincode: data.pincode || "",
-        });
-
-        // Fetch Wallet Balance
-        const { data: walletData } = await supabase
-          .from("wallet")
-          .select("balance")
-          .eq("user_id", user.id)
-          .maybeSingle();
-
-        if (walletData) {
-          setWalletBalance(walletData.balance || 0);
-        } else {
-          // Initialize wallet if it doesn't exist
-          await supabase.from("wallet").insert({ user_id: user.id, balance: 0 });
-          setWalletBalance(0);
-        }
-      } else {
-        setFormData((p) => ({
-          ...p,
-          email: user.email || "",
-        }));
-      }
-    } catch {
-      showAlert({
-        type: "error",
-        title: t("common.error"),
-        message: t("notifications.profileLoadError")
+    if (!profile) {
+      setFormData({
+        full_name: "",
+        email: "",
+        phone: "",
+        address: "",
+        pincode: "",
       });
-    } finally {
-      setLoading(false);
+
+      setUserId(null);
+      return;
     }
-  }, []);
+
+    setUserId(profile.id);
+
+    setFormData({
+      full_name: profile.full_name || "",
+      email: profile.email || "",
+      phone: profile.phone || "",
+      address: profile.address || "",
+      pincode: profile.pincode || "",
+    });
+
+  } catch (error: any) {
+    console.error(
+      "❌ [ProfileScreen] Profile load failed:",
+      error
+    );
+
+    showAlert({
+      type: "error",
+      title: t("common.error"),
+      message:
+        error?.message ||
+        t("notifications.profileLoadError"),
+    });
+  } finally {
+    setLoading(false);
+  }
+}, [showAlert, t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -1094,79 +1083,83 @@ export default function ProfileScreen() {
   /* ================= UPDATE PROFILE ================= */
 
   const handleUpdate = async () => {
-    if (!userId) return;
+  if (!userId) return;
 
-    if (formData.pincode && formData.pincode.length !== 6) {
-      showAlert({
-        type: "warning",
-        title: t("notifications.invalidPin"),
-        message: t("notifications.pinCodeError")
-      });
-      return;
-    }
+  if (formData.pincode && formData.pincode.length !== 6) {
+    showAlert({
+      type: "warning",
+      title: t("notifications.invalidPin"),
+      message: t("notifications.pinCodeError"),
+    });
 
-    setSaving(true);
+    return;
+  }
 
-    try {
-      // Clean the phone to 10 digits
-      const cleanPhone = formData.phone.replace(/\D/g, "").slice(-10);
-      const formattedPhone = `+91${cleanPhone}`;
+  const cleanPhone = formData.phone
+    .replace(/\D/g, "")
+    .slice(-10);
 
-      // Update profile table
-      const { error } = await supabase
-        .from("profile")
-        .update({
-          full_name: formData.full_name.trim(),
-          phone: cleanPhone,
-          address: formData.address.trim(),
-          pincode: formData.pincode.trim(),
-        })
-        .eq("id", userId);
+  if (cleanPhone.length !== 10) {
+    showAlert({
+      type: "warning",
+      title: t("common.error"),
+      message: "Phone number must be exactly 10 digits.",
+    });
 
-      // Also sync phone to Supabase Auth metadata
-      await supabase.auth.updateUser({
-        data: {
-          phone_number: formattedPhone
-        }
-      });
+    return;
+  }
 
-      if (error) throw error;
+  setSaving(true);
 
-      showToast(t("notifications.profileUpdated"), "success");
-      setIsEditing(false);
-    } catch (err: any) {
-      showAlert({
-        type: "error",
-        title: t("notifications.updateFailed"),
-        message: err.message
-      });
-    } finally {
-      setSaving(false);
-    }
-  };
+  try {
+    console.log(
+      "📡 [ProfileScreen] Updating profile through backend..."
+    );
 
-  /* ================= CUSTOMER CARE ================= */
+    const updatedProfile = await updateCustomerProfile({
+      full_name: formData.full_name.trim(),
+      phone: cleanPhone,
+      address: formData.address.trim(),
+      pincode: formData.pincode.trim(),
+    });
 
-  const handleCallCustomerCare = () => {
-    const phoneNumber = "tel:7617618567";
-    Linking.canOpenURL(phoneNumber)
-      .then((supported: boolean) => {
-        if (supported) {
-          Linking.openURL(phoneNumber);
-        } else {
-          showAlert({
-            type: "error",
-            title: t("common.error"),
-            message: t("notifications.callError")
-          });
-        }
-      })
-      .catch(() => showAlert({
-        type: "error",
-        title: t("common.error"),
-        message: t("notifications.dialerError")
-      }));
-  };
+    console.log(
+      "✅ [ProfileScreen] Profile updated:",
+      updatedProfile
+    );
+
+    setFormData({
+      full_name: updatedProfile.full_name || "",
+      email: updatedProfile.email || "",
+      phone: updatedProfile.phone || "",
+      address: updatedProfile.address || "",
+      pincode: updatedProfile.pincode || "",
+    });
+
+    showToast(
+      t("notifications.profileUpdated"),
+      "success"
+    );
+
+    setIsEditing(false);
+
+  } catch (error: any) {
+    console.error(
+      "❌ [ProfileScreen] Profile update failed:",
+      error
+    );
+
+    showAlert({
+      type: "error",
+      title: t("notifications.updateFailed"),
+      message:
+        error?.message ||
+        "Failed to update profile.",
+    });
+  } finally {
+    setSaving(false);
+  }
+};
 
   const handleShareReferral = async () => {
     try {
@@ -1216,7 +1209,7 @@ export default function ProfileScreen() {
           
           // 3. Clear Supabase session
           console.log("🔐 Signing out from Supabase...");
-          await supabase.auth.signOut();
+            await customerLogout();
           console.log("✅ Supabase signOut complete");
           
           // 4. Navigate to Login
@@ -1229,7 +1222,7 @@ export default function ProfileScreen() {
         } catch (error) {
           console.error("❌ Logout error:", error);
           // Still clear session even if backend fails
-          await supabase.auth.signOut();
+          await customerLogout();
           navigation.reset({
             index: 0,
             routes: [{ name: "Login" }],
@@ -1254,6 +1247,20 @@ export default function ProfileScreen() {
       </View>
     );
   }
+  const handleCallCustomerCare = () => {
+  Linking.openURL("tel:7617618567").catch((error) => {
+    console.error(
+      "❌ Failed to open customer care:",
+      error
+    );
+
+    showAlert({
+      type: "error",
+      title: t("common.error"),
+      message: "Unable to make the call.",
+    });
+  });
+};
 
   /* ================= UI ================= */
 
