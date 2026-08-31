@@ -2586,6 +2586,8 @@ export type CustomerProfile = {
   phone: string | null;
   address: string | null;
   pincode: string | null;
+  referral_code?: string | null;
+  referred_by_id?: string | null;
 };
 
 export type CustomerProfileUpdateRequest = {
@@ -3800,3 +3802,34 @@ export type CustomerCouponsResponse = {
 //     method: "DELETE",
 //   });
 // };
+
+
+// =========================================================
+// CUSTOMER REFERRAL
+// =========================================================
+// =========================================================
+// CUSTOMER REFERRAL
+// =========================================================
+
+export const validateCustomerReferralCode = async (
+  code: string
+): Promise<string | null> => {
+  const cleanCode = code.trim().toUpperCase();
+
+  if (!cleanCode) {
+    return null;
+  }
+
+  const response = await request(
+    `/api/v1/customer/referral/validate?code=${encodeURIComponent(cleanCode)}`,
+    {
+      method: "GET",
+    }
+  );
+
+  const data = response as {
+    referrer_id?: string | null;
+  };
+
+  return data.referrer_id ?? null;
+};

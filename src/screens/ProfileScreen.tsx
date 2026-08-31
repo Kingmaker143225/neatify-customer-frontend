@@ -1017,14 +1017,78 @@ export default function ProfileScreen() {
     pincode: "",
   });
 
-  const [referralCode, setReferralCode] = useState<string>("");
+  // const [referralCode, setReferralCode] = useState<string>("");
+  const [referralCode, setReferralCode] = useState("");
   const [walletBalance, setWalletBalance] = useState<number>(0);
 
-  const fetchProfile = useCallback(async () => {
+//   const fetchProfile = useCallback(async () => {
+//   try {
+//     setLoading(true);
+
+//     console.log("📡 [ProfileScreen] Fetching customer profile from backend...");
+
+//     const profile = await getCustomerProfile();
+
+//     console.log(
+//       "✅ [ProfileScreen] Backend profile:",
+//       profile
+//     );
+
+//     if (!profile) {
+//       setFormData({
+//         full_name: "",
+//         email: "",
+//         phone: "",
+//         address: "",
+//         pincode: "",
+//       });
+
+//       setUserId(null);
+//       return;
+//     }
+
+//     setUserId(profile.id);
+
+//     setFormData({
+//       full_name: profile.full_name || "",
+//       email: profile.email || "",
+//       phone: profile.phone || "",
+//       address: profile.address || "",
+//       pincode: profile.pincode || "",
+//     });
+    
+
+//   } catch (error: any) {
+//     console.error(
+//       "❌ [ProfileScreen] Profile load failed:",
+//       error
+//     );
+
+//     showAlert({
+//       type: "error",
+//       title: t("common.error"),
+//       message:
+//         error?.message ||
+//         t("notifications.profileLoadError"),
+//     });
+//   } finally {
+//     setLoading(false);
+//   }
+// }, [showAlert, t]);
+
+//   useFocusEffect(
+//     useCallback(() => {
+//       fetchProfile();
+//     }, [fetchProfile])
+//   );
+
+const fetchProfile = useCallback(async () => {
   try {
     setLoading(true);
 
-    console.log("📡 [ProfileScreen] Fetching customer profile from backend...");
+    console.log(
+      "📡 [ProfileScreen] Fetching customer profile from backend..."
+    );
 
     const profile = await getCustomerProfile();
 
@@ -1040,8 +1104,11 @@ export default function ProfileScreen() {
         phone: "",
         address: "",
         pincode: "",
+      
+
       });
 
+      setReferralCode("");
       setUserId(null);
       return;
     }
@@ -1055,6 +1122,9 @@ export default function ProfileScreen() {
       address: profile.address || "",
       pincode: profile.pincode || "",
     });
+
+    // ✅ Customer's own referral code
+    setReferralCode(profile.referral_code || "");
 
   } catch (error: any) {
     console.error(
@@ -1074,11 +1144,11 @@ export default function ProfileScreen() {
   }
 }, [showAlert, t]);
 
-  useFocusEffect(
-    useCallback(() => {
-      fetchProfile();
-    }, [fetchProfile])
-  );
+useFocusEffect(
+  useCallback(() => {
+    fetchProfile();
+  }, [fetchProfile])
+);
 
   /* ================= UPDATE PROFILE ================= */
 
@@ -1135,6 +1205,8 @@ export default function ProfileScreen() {
       address: updatedProfile.address || "",
       pincode: updatedProfile.pincode || "",
     });
+
+    setReferralCode(referralCode || "");
 
     showToast(
       t("notifications.profileUpdated"),
