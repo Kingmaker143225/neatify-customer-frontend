@@ -3103,6 +3103,37 @@ export async function getCustomerBookings() {
 }
 
 // =========================================================
+// CHECK CUSTOMER SERVICE AVAILABILITY
+// =========================================================
+
+export type CustomerServiceAvailabilityResponse = {
+  available: boolean;
+  message?: string;
+  [key: string]: any;
+};
+
+export async function checkCustomerServiceAvailability(
+  pincode: string,
+  serviceCategories: string[],
+) {
+  console.log(
+    "📡 [Backend] checkCustomerServiceAvailability called:",
+    {
+      pincode,
+      serviceCategories,
+    }
+  );
+
+  const params = new URLSearchParams({
+    pincode: pincode.trim(),
+    service_categories: serviceCategories.join(","),
+  });
+
+  return request<CustomerServiceAvailabilityResponse>(
+    `/api/v1/customer/service-availability?${params.toString()}`
+  );
+}
+// =========================================================
 // GET SINGLE CUSTOMER BOOKING
 // =========================================================
 
@@ -3472,3 +3503,300 @@ export async function verifyCustomerOtp(
 
   return result;
 }
+
+// =========================================================
+// CUSTOMER PROFILE
+// =========================================================
+
+// export async function getCustomerProfile() {
+//   console.log("📡 [Backend] getCustomerProfile called");
+
+//   return request<any>(
+//     "/api/v1/customer/profile"
+//   );
+// }
+
+// export async function updateCustomerProfile(data: {
+//   full_name: string;
+//   phone: string;
+//   address: string;
+//   pincode: string;
+// }) {
+//   console.log(
+//     "📡 [Backend] updateCustomerProfile called:",
+//     data
+//   );
+
+//   return request<any>(
+//     "/api/v1/customer/profile",
+//     {
+//       method: "PUT",
+//       body: JSON.stringify(data),
+//     }
+//   );
+// }
+
+
+// =========================================================
+// CUSTOMER POLICIES
+// =========================================================
+
+export async function getCustomerPolicies() {
+  console.log("📡 [Backend] getCustomerPolicies called");
+
+  return request<any>(
+    "/api/v1/customer/policies"
+  );
+}
+
+
+// =========================================================
+// CUSTOMER COUPONS
+// =========================================================
+
+export async function getCustomerCoupons() {
+  console.log("📡 [Backend] getCustomerCoupons called");
+
+  return request<any>(
+    "/api/v1/customer/coupons"
+  );
+}
+
+
+export async function validateCustomerCoupon(
+  couponCode: string,
+  subtotal: number,
+  serviceId?: string,
+  phoneNumber?: string
+) {
+  console.log(
+    "📡 [Backend] validateCustomerCoupon called:",
+    {
+      couponCode,
+      subtotal,
+      serviceId,
+      phoneNumber,
+    }
+  );
+
+  const params = new URLSearchParams();
+
+  params.append(
+    "coupon_code",
+    couponCode.trim()
+  );
+
+  params.append(
+    "subtotal",
+    String(subtotal)
+  );
+
+  if (serviceId) {
+    params.append(
+      "service_id",
+      serviceId
+    );
+  }
+
+  if (phoneNumber) {
+    params.append(
+      "phone_number",
+      phoneNumber
+    );
+  }
+
+  return request<any>(
+    `/api/v1/customer/coupons/validate?${params.toString()}`
+  );
+}
+
+
+export async function markCustomerCouponUsed(
+  couponId: string
+) {
+  console.log(
+    "📡 [Backend] markCustomerCouponUsed called:",
+    couponId
+  );
+
+  return request<any>(
+    `/api/v1/customer/coupons/${couponId}/use`,
+    {
+      method: "POST",
+    }
+  );
+}
+
+// =========================================================
+// CUSTOMER WALLET
+// =========================================================
+
+export async function getCustomerWallet() {
+  console.log("📡 [Backend] getCustomerWallet called");
+
+  return request<any>(
+    "/api/v1/customer/wallet"
+  );
+}
+
+export async function getCustomerWalletTransactions(
+  limit: number = 50
+) {
+  console.log(
+    "📡 [Backend] getCustomerWalletTransactions called:",
+    limit
+  );
+
+  return request<any>(
+    `/api/v1/customer/wallet/transactions?limit=${limit}`
+  );
+}
+
+export async function deductCustomerWallet(
+  amount: number,
+  description: string = "Booking payment"
+) {
+  console.log(
+    "📡 [Backend] deductCustomerWallet called:",
+    {
+      amount,
+      description,
+    }
+  );
+
+  const params = new URLSearchParams();
+
+  params.append(
+    "amount",
+    String(amount)
+  );
+
+  params.append(
+    "description",
+    description
+  );
+
+  return request<any>(
+    `/api/v1/customer/wallet/deduct?${params.toString()}`,
+    {
+      method: "POST",
+    }
+  );
+}
+
+
+// =========================================================
+// CUSTOMER COUPONS
+// =========================================================
+
+export type CustomerCoupon = {
+  id: string;
+  coupon_code: string;
+  discount_percentage?: number | null;
+  phone_number?: string | null;
+  is_used?: boolean;
+  created_at?: string;
+  discount_amount?: number | null;
+  is_active?: boolean;
+  service_id?: string | null;
+  user_id?: string | null;
+};
+
+export type CustomerCouponsResponse = {
+  success: boolean;
+  items: CustomerCoupon[];
+  message: string;
+};
+
+// export async function getCustomerCoupons() {
+//   console.log("📡 [Backend] getCustomerCoupons called");
+
+//   return request<CustomerCouponsResponse>(
+//     "/api/v1/customer/coupons"
+//   );
+// }
+
+// export async function validateCustomerCoupon(
+//   couponCode: string,
+//   subtotal: number,
+//   serviceId?: string,
+//   phoneNumber?: string
+// ) {
+//   console.log(
+//     "📡 [Backend] validateCustomerCoupon called:",
+//     couponCode
+//   );
+
+//   const params = new URLSearchParams({
+//     coupon_code: couponCode,
+//     subtotal: String(subtotal),
+//   });
+
+//   if (serviceId) {
+//     params.append("service_id", serviceId);
+//   }
+
+//   if (phoneNumber) {
+//     params.append("phone_number", phoneNumber);
+//   }
+
+//   return request<{
+//     success: boolean;
+//     valid: boolean;
+//     coupon: CustomerCoupon;
+//     discount_amount: number;
+//     final_amount: number;
+//     message: string;
+//   }>(
+//     `/api/v1/customer/coupons/validate?${params.toString()}`
+//   );
+// }
+
+// export async function markCustomerCouponUsed(
+//   couponId: string
+// ) {
+//   console.log(
+//     "📡 [Backend] markCustomerCouponUsed called:",
+//     couponId
+//   );
+
+//   return request<{
+//     success: boolean;
+//     items: any[];
+//     message: string;
+//   }>(
+//     `/api/v1/customer/coupons/${couponId}/use`,
+//     {
+//       method: "POST",
+//     }
+//   );
+// }
+
+
+
+// =========================================================
+// CUSTOMER WALLET DEDUCTION
+// =========================================================
+
+// export const deductCustomerWallet = async (
+//   amount: number,
+//   bookingId: string
+// ) => {
+//   return apiRequest("/api/v1/customer/wallet/deduct", {
+//     method: "POST",
+//     body: JSON.stringify({
+//       amount,
+//       booking_id: bookingId,
+//     }),
+//   });
+// };
+
+// =========================================================
+// CLEAR CUSTOMER CART
+// =========================================================
+
+// export const clearCustomerCart = async () => {
+//   return apiRequest("/api/v1/customer/cart", {
+//     method: "DELETE",
+//   });
+// };

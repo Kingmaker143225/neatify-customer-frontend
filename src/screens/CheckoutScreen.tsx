@@ -2364,9 +2364,19 @@ import {
   createCustomerBooking,
   createCustomerPaymentOrder,
   verifyCustomerPayment,
+  checkCustomerServiceAvailability,
+  validateCustomerCoupon,
+  getCustomerProfile,
+  markCustomerCouponUsed,
+  deductCustomerWallet,
+clearCustomerCart,
+
+  updateCustomerProfile,
+  getCustomerCoupons,
+getCustomerPolicies,
 } from "../lib/backendClient";
 
-import { supabase } from "../lib/supabase";
+// import { supabase } from "../lib/supabase";
 import { RootStackParamList, SelectedService } from "../navigation/AppNavigator";
 import { COLORS } from "../theme/colors";
 import { clearClaimedOffer, getClaimedOffer } from "../utils/priceUtils";
@@ -2659,95 +2669,265 @@ export default function CheckoutScreen({ route }: Props) {
 
   /* ================= PINCODE CHECK FUNCTION ================= */
 
-  const checkPincodeServiceable = async (pin: string) => {
-    const cleanedPin = pin.trim();
+  // const checkPincodeServiceable = async (pin: string) => {
+  //   const cleanedPin = pin.trim();
 
-    if (cleanedPin.length !== 6) {
+  //   if (cleanedPin.length !== 6) {
+  //     setIsPincodeServiceable(false);
+  //     return;
+  //   }
+
+  //   try {
+  //     setCheckingPincode(true);
+
+  //     const { data, error } = await supabase
+  //       .from("neatify_service_areas")
+  //       .select("id, pincode")
+  //       .ilike("pincode", `%${cleanedPin}%`)
+  //       .limit(1);
+
+  //     if (error) {
+  //       console.log("⚠️ Pincode check DB/RLS error:", error.message);
+  //       // Fallback to true if RLS blocks query so users aren't blocked incorrectly
+  //       setIsPincodeServiceable(true);
+  //       return;
+  //     }
+
+  //     setIsPincodeServiceable(!!(data && data.length > 0));
+  //   } catch (err) {
+  //     console.log("Pincode check failed:", err);
+  //     setIsPincodeServiceable(true);
+  //   } finally {
+  //     setCheckingPincode(false);
+  //   }
+  // };
+
+  const checkPincodeServiceable = async (pin: string) => {
+  const cleanPincode = pin.trim();
+
+  if (!cleanPincode) {
+    setIsPincodeServiceable(false);
+    return;
+  }
+
+  try {
+    console.log(
+      "📡 [Checkout] Checking service availability through backend:",
+      cleanPincode
+    );
+
+    // const serviceCategories = services
+    //   .map((service: any) =>
+    //     service.category ||
+    //     service.main_category ||
+    //     service.category_name
+    //   )
+    //   .filter(Boolean);
+
+    const serviceCategories = checkoutServices
+  .map((service: any) =>
+    service.category ||
+    service.main_category ||
+    service.category_name
+  )
+  .filter(Boolean);
+
+    if (serviceCategories.length === 0) {
+      console.warn(
+        "⚠️ [Checkout] No service categories found"
+      );
+
       setIsPincodeServiceable(false);
       return;
     }
 
-    try {
-      setCheckingPincode(true);
+    const response =
+      await checkCustomerServiceAvailability(
+        cleanPincode,
+        serviceCategories
+      );
 
-      const { data, error } = await supabase
-        .from("neatify_service_areas")
-        .select("id, pincode")
-        .ilike("pincode", `%${cleanedPin}%`)
-        .limit(1);
+    console.log(
+      "✅ [Checkout] Backend service availability:",
+      response
+    );
 
-      if (error) {
-        console.log("⚠️ Pincode check DB/RLS error:", error.message);
-        // Fallback to true if RLS blocks query so users aren't blocked incorrectly
-        setIsPincodeServiceable(true);
-        return;
-      }
+    setIsPincodeServiceable(
+      response?.available === true
+    );
+  } catch (error) {
+    console.error(
+      "❌ [Checkout] Serviceability check failed:",
+      error
+    );
 
-      setIsPincodeServiceable(!!(data && data.length > 0));
-    } catch (err) {
-      console.log("Pincode check failed:", err);
-      setIsPincodeServiceable(true);
-    } finally {
-      setCheckingPincode(false);
-    }
-  };
+    setIsPincodeServiceable(false);
+  }
+};
+
+  // useEffect(() => {
+  //   const pinMatch = manualAddress.match(/\b(\d{6})\b/);
+  //   const pinToCheck = pincode.trim() || (pinMatch ? pinMatch[1] : "");
+  //   if (pinMatch && !pincode) {
+  //     setPincode(pinMatch[1]);
+  //   }
+  //   checkPincodeServiceable(pinToCheck);
+  // }, [pincode, manualAddress]);
 
   useEffect(() => {
-    const pinMatch = manualAddress.match(/\b(\d{6})\b/);
-    const pinToCheck = pincode.trim() || (pinMatch ? pinMatch[1] : "");
-    if (pinMatch && !pincode) {
-      setPincode(pinMatch[1]);
-    }
-    checkPincodeServiceable(pinToCheck);
-  }, [pincode, manualAddress]);
+  const safeManualAddress = manualAddress || "";
+
+  const pinMatch =
+    safeManualAddress.match(/\b(\d{6})\b/);
+
+  const pinToCheck =
+    pincode.trim() ||
+    (pinMatch ? pinMatch[1] : "");
+
+  if (pinMatch && !pincode) {
+    setPincode(pinMatch[1]);
+  }
+
+  checkPincodeServiceable(pinToCheck);
+}, [pincode, manualAddress]);
 
   /* ================= FETCH COUPON ================= */
 
+  // const fetchUserCoupon = async (phone: string) => {
+  //   // Prevent overwriting if a session-claimed offer is present
+  //   const claimed = await getClaimedOffer();
+  //   if (claimed) {
+  //     console.log("ℹ️ Skipping DB coupon fetch because a claimed offer exists.");
+  //     return;
+  //   }
+
+  //   if (!phone) return;
+
+  //   const userPhone10 = formatDisplayPhone(phone);
+  //   if (!userPhone10 || userPhone10.length < 10) return;
+
+  //   const userPhone91 = "91" + userPhone10;
+  //   const userPhonePlus91 = "+91" + userPhone10;
+
+  //   console.log("🔍 Fetching coupon for:", userPhone10);
+
+  //   const { data: couponData, error: couponError } = await supabase
+  //     .from("coupons")
+  //     .select("*")
+  //     .or(`phone_number.eq.${userPhone10},phone_number.eq.${userPhone91},phone_number.eq.${userPhonePlus91}`)
+  //     .order('created_at', { ascending: false })
+  //     .limit(1)
+  //     .maybeSingle();
+
+  //   if (couponError) {
+  //     console.log("❌ Coupon fetch error:", couponError.message);
+  //     return;
+  //   }
+
+  //   // ✅ STRICT CHECK: Only show if is_used is NOT true (unused)
+  //   if (couponData && !couponData.is_used) {
+  //     console.log("✅ Valid unused coupon found:", couponData.coupon_code);
+  //     setCoupon({
+  //       id: couponData.id,
+  //       coupon_code: couponData.coupon_code,
+  //       discount_percentage: couponData.discount_percentage || couponData.discount_p || 0,
+  //       discount_amount: couponData.discount_amount || 0
+  //     });
+  //   } else {
+  //     console.log("ℹ️ Coupon not shown: either not found or already used.");
+  //     setCoupon(null);
+  //   }
+  // };
+
   const fetchUserCoupon = async (phone: string) => {
+  try {
     // Prevent overwriting if a session-claimed offer is present
     const claimed = await getClaimedOffer();
+
     if (claimed) {
-      console.log("ℹ️ Skipping DB coupon fetch because a claimed offer exists.");
+      console.log(
+        "ℹ️ Skipping backend coupon fetch because a claimed offer exists."
+      );
       return;
     }
 
     if (!phone) return;
 
     const userPhone10 = formatDisplayPhone(phone);
-    if (!userPhone10 || userPhone10.length < 10) return;
 
-    const userPhone91 = "91" + userPhone10;
-    const userPhonePlus91 = "+91" + userPhone10;
-
-    console.log("🔍 Fetching coupon for:", userPhone10);
-
-    const { data: couponData, error: couponError } = await supabase
-      .from("coupons")
-      .select("*")
-      .or(`phone_number.eq.${userPhone10},phone_number.eq.${userPhone91},phone_number.eq.${userPhonePlus91}`)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (couponError) {
-      console.log("❌ Coupon fetch error:", couponError.message);
+    if (!userPhone10 || userPhone10.length < 10) {
       return;
     }
 
-    // ✅ STRICT CHECK: Only show if is_used is NOT true (unused)
+    console.log(
+      "📡 [Checkout] Fetching customer coupons through backend:",
+      userPhone10
+    );
+
+    const response = await getCustomerCoupons();
+
+    console.log(
+      "✅ [Checkout] Customer coupons response:",
+      response
+    );
+
+    const coupons = response?.items || [];
+
+    // Backend already filters active + unused + customer-specific coupons.
+    // We only need to find the latest matching phone coupon here.
+    const matchingCoupons = coupons.filter(
+      (item: any) => {
+        if (!item?.phone_number) {
+          return false;
+        }
+
+        const couponPhone =
+          String(item.phone_number)
+            .replace(/\D/g, "")
+            .slice(-10);
+
+        return couponPhone === userPhone10;
+      }
+    );
+
+    const couponData =
+      matchingCoupons.length > 0
+        ? matchingCoupons[0]
+        : null;
+
     if (couponData && !couponData.is_used) {
-      console.log("✅ Valid unused coupon found:", couponData.coupon_code);
+      console.log(
+        "✅ Valid unused coupon found:",
+        couponData.coupon_code
+      );
+
       setCoupon({
         id: couponData.id,
         coupon_code: couponData.coupon_code,
-        discount_percentage: couponData.discount_percentage || couponData.discount_p || 0,
-        discount_amount: couponData.discount_amount || 0
+        discount_percentage:
+          couponData.discount_percentage ||
+          couponData.discount_p ||
+          0,
+        discount_amount:
+          couponData.discount_amount || 0,
       });
     } else {
-      console.log("ℹ️ Coupon not shown: either not found or already used.");
+      console.log(
+        "ℹ️ Coupon not shown: either not found or already used."
+      );
+
       setCoupon(null);
     }
-  };
+
+  } catch (error) {
+    console.error(
+      "❌ Backend coupon fetch error:",
+      error
+    );
+
+    setCoupon(null);
+  }
+};
 
   useEffect(() => {
     if (profile?.phone) {
@@ -2757,19 +2937,51 @@ export default function CheckoutScreen({ route }: Props) {
 
   /* ================= FETCH POLICIES ================= */
 
-  const fetchPolicies = useCallback(async () => {
-    const { data, error } = await supabase
-      .from("app_policies")
-      .select("user_policies, terms_and_conditions")
-      .limit(1)
-      .maybeSingle();
+  // const fetchPolicies = useCallback(async () => {
+  //   const { data, error } = await supabase
+  //     .from("app_policies")
+  //     .select("user_policies, terms_and_conditions")
+  //     .limit(1)
+  //     .maybeSingle();
 
-    if (error) {
-      console.log("Error fetching policies:", error);
-    } else if (data) {
-      setPolicies(data as Policies);
+  //   if (error) {
+  //     console.log("Error fetching policies:", error);
+  //   } else if (data) {
+  //     setPolicies(data as Policies);
+  //   }
+  // }, []);
+  const fetchPolicies = useCallback(async () => {
+  try {
+    console.log(
+      "📡 [Checkout] Fetching policies through backend..."
+    );
+
+    const response =
+      await getCustomerPolicies();
+
+    console.log(
+      "✅ [Checkout] Policies response:",
+      response
+    );
+
+    const policyData =
+      response?.item ||
+      response?.data ||
+      response;
+
+    if (policyData) {
+      setPolicies(
+        policyData as Policies
+      );
     }
-  }, []);
+
+  } catch (error) {
+    console.error(
+      "❌ [Checkout] Backend policy fetch error:",
+      error
+    );
+  }
+}, []);
 
   useEffect(() => {
     fetchPolicies();
@@ -2777,72 +2989,156 @@ export default function CheckoutScreen({ route }: Props) {
 
   /* ================= LOAD PROFILE ================= */
 
+  // const loadProfile = useCallback(async () => {
+  //   const { data } = await supabase.auth.getUser();
+  //   if (!data.user) return;
+
+  //   setUserId(data.user.id);
+
+  //   const { data: profileData, error } = await supabase
+  //     .from("profile")
+  //     .select("full_name,email,phone,address,pincode")
+  //     .eq("id", data.user.id)
+  //     .maybeSingle();
+
+  //   if (error) {
+  //     setAlertConfig({ title: 'Error', message: error.message, type: 'error' });
+  //     setShowAlertModal(true);
+  //     setLoadingProfile(false);
+  //     return;
+  //   }
+
+  //   if (profileData) {
+  //     // Apply phone formatting
+  //     const cleanedProfile = {
+  //       ...profileData,
+  //       phone: formatDisplayPhone(profileData.phone)
+  //     };
+  //     setProfile(cleanedProfile);
+
+  //     // ✅ Initial coupon fetch moved to useEffect [profile?.phone]
+
+  //     setPincode(profileData.pincode || "");
+
+  //     if (profileData.address) {
+  //       const addressWithoutPincode = profileData.address
+  //         .replace(/\s*-\s*\d{6}\s*$/, "")
+  //         .trim();
+
+  //       setManualAddress(addressWithoutPincode);
+  //       setIsAddressSummaryMode(true);
+  //       setHasUsedLocationFetch(true);
+
+  //       // ✅ Automatically geocode the saved profile address on load
+  //       handleManualGeocode(`${addressWithoutPincode}, ${profileData.pincode || ""}`);
+  //     }
+  //   } else {
+  //     setAlertConfig({
+  //       title: 'Profile Not Found',
+  //       message: 'Please complete your profile before booking',
+  //       type: 'warning'
+  //     });
+  //     setShowAlertModal(true);
+  //     navigation.navigate("MainTabs", { screen: "ProfileTab" });
+  //   }
+
+  //   // ✅ Fetch Wallet Balance
+  //   const { data: walletData } = await supabase
+  //     .from("wallet")
+  //     .select("balance")
+  //     .eq("user_id", data.user.id)
+  //     .maybeSingle();
+
+  //   if (walletData) {
+  //     setWalletBalance(walletData.balance || 0);
+  //   }
+
+  //   setLoadingProfile(false);
+  // }, [navigation]);
+
+
   const loadProfile = useCallback(async () => {
-    const { data } = await supabase.auth.getUser();
-    if (!data.user) return;
+  try {
+    console.log("📡 [Checkout] Loading customer profile through backend...");
 
-    setUserId(data.user.id);
+    const response = await getCustomerProfile();
 
-    const { data: profileData, error } = await supabase
-      .from("profile")
-      .select("full_name,email,phone,address,pincode")
-      .eq("id", data.user.id)
-      .maybeSingle();
+    console.log(
+      "✅ [Checkout] Customer profile response:",
+      response
+    );
 
-    if (error) {
-      setAlertConfig({ title: 'Error', message: error.message, type: 'error' });
+    // const profileData = response?.item ?? response;
+    const profileData = response;
+
+    if (!profileData) {
+      setAlertConfig({
+        title: "Profile Not Found",
+        message: "Please complete your profile before booking",
+        type: "warning",
+      });
+
       setShowAlertModal(true);
+
+      navigation.navigate("MainTabs", {
+        screen: "ProfileTab",
+      });
+
       setLoadingProfile(false);
       return;
     }
 
-    if (profileData) {
-      // Apply phone formatting
-      const cleanedProfile = {
-        ...profileData,
-        phone: formatDisplayPhone(profileData.phone)
-      };
-      setProfile(cleanedProfile);
+    setUserId(profileData.id);
 
-      // ✅ Initial coupon fetch moved to useEffect [profile?.phone]
+    const cleanedProfile = {
+      full_name: profileData.full_name || "",
+      email: profileData.email || "",
+      phone: formatDisplayPhone(profileData.phone),
+      address: profileData.address || "",
+      pincode: profileData.pincode || "",
+    };
 
-      setPincode(profileData.pincode || "");
+    setProfile(cleanedProfile);
 
-      if (profileData.address) {
-        const addressWithoutPincode = profileData.address
+    setPincode(profileData.pincode || "");
+
+    if (profileData.address) {
+      const addressWithoutPincode =
+        profileData.address
           .replace(/\s*-\s*\d{6}\s*$/, "")
           .trim();
 
-        setManualAddress(addressWithoutPincode);
-        setIsAddressSummaryMode(true);
-        setHasUsedLocationFetch(true);
+      setManualAddress(addressWithoutPincode);
+      setIsAddressSummaryMode(true);
+      setHasUsedLocationFetch(true);
 
-        // ✅ Automatically geocode the saved profile address on load
-        handleManualGeocode(`${addressWithoutPincode}, ${profileData.pincode || ""}`);
-      }
-    } else {
-      setAlertConfig({
-        title: 'Profile Not Found',
-        message: 'Please complete your profile before booking',
-        type: 'warning'
-      });
-      setShowAlertModal(true);
-      navigation.navigate("MainTabs", { screen: "ProfileTab" });
-    }
-
-    // ✅ Fetch Wallet Balance
-    const { data: walletData } = await supabase
-      .from("wallet")
-      .select("balance")
-      .eq("user_id", data.user.id)
-      .maybeSingle();
-
-    if (walletData) {
-      setWalletBalance(walletData.balance || 0);
+      handleManualGeocode(
+        `${addressWithoutPincode}, ${
+          profileData.pincode || ""
+        }`
+      );
     }
 
     setLoadingProfile(false);
-  }, [navigation]);
+
+  } catch (error: any) {
+    console.error(
+      "❌ [Checkout] Failed to load customer profile:",
+      error
+    );
+
+    setAlertConfig({
+      title: "Error",
+      message:
+        error?.message ||
+        "Unable to load your profile.",
+      type: "error",
+    });
+
+    setShowAlertModal(true);
+    setLoadingProfile(false);
+  }
+}, [navigation]);
 
   useEffect(() => {
     loadProfile();
@@ -2911,7 +3207,9 @@ export default function CheckoutScreen({ route }: Props) {
           const parts = fullAddr.split(",").map((p: string) => p.trim()).filter((p: string) => p);
           let pinIdx = -1;
           for (let i = parts.length - 1; i >= 0; i--) {
-            const pinMatch = parts[i].match(/\b(\d{6})\b/);
+            // const pinMatch = parts[i].match(/\b(\d{6})\b/);
+            const pinMatch =
+  (parts[i] || "").match(/\b(\d{6})\b/);
             if (pinMatch) {
               setPincode(pinMatch[1]);
               pinIdx = i;
@@ -2952,49 +3250,81 @@ export default function CheckoutScreen({ route }: Props) {
     setIsVerifyingCoupon(true);
     setCouponStatus({ type: '', message: '' });
 
-    try {
-      const cleanPhone = profile?.phone ? profile.phone.replace(/\D/g, "").slice(-10) : "";
+   try {
+  const cleanPhone = profile?.phone
+    ? profile.phone.replace(/\D/g, "").slice(-10)
+    : "";
 
-      const { data, error } = await supabase
-        .from("coupons")
-        .select("*")
-        .eq("coupon_code", manualCouponCode.trim().toUpperCase())
-        .maybeSingle();
+  const response = await validateCustomerCoupon(
+    manualCouponCode.trim().toUpperCase(),
+    totalPrice,
+    undefined,
+    cleanPhone
+  );
 
-      if (error || !data) {
-        setCouponStatus({ type: "error", message: "Invalid coupon code" });
-        setCouponApplied(false);
-      } else if (data.is_used) {
-        setCouponStatus({ type: "error", message: "This coupon has already been used" });
-        setCouponApplied(false);
-      } else {
-        // Check phone number if applicable
-        const couponPhone = data.phone_number ? data.phone_number.replace(/\D/g, "").slice(-10) : "";
-        if (couponPhone && couponPhone !== cleanPhone) {
-          setCouponStatus({ type: "error", message: "This coupon is not valid for your phone number" });
-          setCouponApplied(false);
-        } else {
-          setCoupon({
-            id: data.id,
-            coupon_code: data.coupon_code,
-            discount_percentage: data.discount_percentage || data.discount_p || 0,
-            discount_amount: data.discount_amount || 0
-          });
-          const discountPct = data.discount_percentage || data.discount_p || 0;
-          setCouponDiscount(discountPct);
-          setCouponApplied(true);
-          const msg = data.discount_amount && data.discount_amount > 0
-            ? `Coupon applied! ₹${data.discount_amount} off`
-            : `Coupon applied! ${discountPct}% off`;
-          setCouponStatus({ type: "success", message: msg });
-        }
-      }
-    } catch (err) {
-      console.error("Coupon verification error:", err);
-      setCouponStatus({ type: "error", message: "Error verifying coupon" });
-    } finally {
-      setIsVerifyingCoupon(false);
-    }
+  console.log(
+    "✅ [Checkout] Coupon validation response:",
+    response
+  );
+
+  if (!response?.valid) {
+    setCouponStatus({
+      type: "error",
+      message:
+        response?.message || "Invalid coupon code",
+    });
+
+    setCouponApplied(false);
+    return;
+  }
+
+  const data = response.coupon;
+
+  const discountPct =
+    Number(data?.discount_percentage || 0);
+
+  const discountAmount =
+    Number(response?.discount_amount || 0);
+
+  setCoupon({
+    id: data.id,
+    coupon_code: data.coupon_code,
+    discount_percentage: discountPct,
+    discount_amount:
+      Number(data?.discount_amount || 0),
+  });
+
+  setCouponDiscount(discountPct);
+  setCouponApplied(true);
+
+  const msg =
+    discountAmount > 0
+      ? `Coupon applied! ₹${discountAmount} off`
+      : `Coupon applied! ${discountPct}% off`;
+
+  setCouponStatus({
+    type: "success",
+    message: msg,
+  });
+
+} catch (err: any) {
+  console.error(
+    "Coupon verification error:",
+    err
+  );
+
+  setCouponApplied(false);
+
+  setCouponStatus({
+    type: "error",
+    message:
+      err?.message ||
+      "Error verifying coupon",
+  });
+
+} finally {
+  setIsVerifyingCoupon(false);
+}
   };
 
   const removeCoupon = () => {
@@ -3172,16 +3502,36 @@ export default function CheckoutScreen({ route }: Props) {
     const fullAddress = `${manualAddress.trim()} - ${pincode.trim()}`;
 
     // ✅ Auto-save profile
-    supabase
-      .from("profile")
-      .update({
-        address: fullAddress,
-        pincode: pincode,
-      })
-      .eq("id", userId)
-      .then(({ error }) => {
-        if (error) console.log("Failed to auto-save profile", error);
-      });
+    // supabase
+    //   .from("profile")
+    //   .update({
+    //     address: fullAddress,
+    //     pincode: pincode,
+    //   })
+    //   .eq("id", userId)
+    //   .then(({ error }) => {
+    //     if (error) console.log("Failed to auto-save profile", error);
+    //   });
+
+    try {
+  await updateCustomerProfile({
+    full_name: profile.full_name,
+    phone: profile.phone,
+    address: fullAddress,
+    pincode: pincode,
+  });
+
+  console.log(
+    "✅ [Checkout] Profile address auto-saved through backend"
+  );
+} catch (profileError) {
+  console.error(
+    "⚠️ [Checkout] Failed to auto-save profile:",
+    profileError
+  );
+}
+  
+
 
     const [datePart, timePart] = bookingDateText.split(" at ");
 
@@ -3329,59 +3679,99 @@ export default function CheckoutScreen({ route }: Props) {
          ========================================================= */
 
       // Mark coupon as used if applicable
-      if (couponApplied && coupon && coupon.id !== "claimed_new_user") {
-        try {
-          await supabase
-            .from("coupons")
-            .update({ is_used: true })
-            .eq("id", coupon.id);
-          console.log("✅ Coupon marked as used:", coupon.coupon_code);
-        } catch (couponError) {
-          console.error("⚠️ Coupon update failed:", couponError);
-        }
-      }
+      
+
+
+if (couponApplied && coupon && coupon.id !== "claimed_new_user") {
+  try {
+    await markCustomerCouponUsed(coupon.id);
+
+    console.log(
+      "✅ Coupon marked as used:",
+      coupon.coupon_code
+    );
+  } catch (couponError) {
+    console.error(
+      "⚠️ Coupon update failed:",
+      couponError
+    );
+  }
+}
 
       // Wallet deduction
-      if (useWallet && walletBalance > 0) {
-        try {
-          const deduction = Math.min(totalPrice + totalTax, walletBalance);
+      // if (useWallet && walletBalance > 0) {
+      //   try {
+      //     const deduction = Math.min(totalPrice + totalTax, walletBalance);
 
-          const { error: walletError } = await supabase
-            .from("wallet")
-            .update({ balance: walletBalance - deduction })
-            .eq("user_id", userId);
+      //     const { error: walletError } = await supabase
+      //       .from("wallet")
+      //       .update({ balance: walletBalance - deduction })
+      //       .eq("user_id", userId);
 
-          if (!walletError) {
-            await supabase
-              .from("wallet_transactions")
-              .insert({
-                user_id: userId,
-                amount: -deduction,
-                transaction_type: "booking_payment",
-                description: `Discount applied to booking #${bookingId}`,
-              });
-            console.log("✅ Wallet balance updated");
-          } else {
-            console.error("⚠️ Wallet update failed:", walletError);
-          }
-        } catch (walletError) {
-          console.error("⚠️ Wallet processing failed:", walletError);
-        }
-      }
+      //     if (!walletError) {
+      //       await supabase
+      //         .from("wallet_transactions")
+      //         .insert({
+      //           user_id: userId,
+      //           amount: -deduction,
+      //           transaction_type: "booking_payment",
+      //           description: `Discount applied to booking #${bookingId}`,
+      //         });
+      //       console.log("✅ Wallet balance updated");
+      //     } else {
+      //       console.error("⚠️ Wallet update failed:", walletError);
+      //     }
+      //   } catch (walletError) {
+      //     console.error("⚠️ Wallet processing failed:", walletError);
+      //   }
+      // }
+
+      // Wallet deduction
+if (useWallet && walletBalance > 0) {
+  try {
+    const deduction = Math.min(
+      totalPrice + totalTax,
+      walletBalance
+    );
+
+    await deductCustomerWallet(
+      deduction,
+      bookingId
+    );
+
+    console.log("✅ Wallet balance updated");
+  } catch (walletError) {
+    console.error(
+      "⚠️ Wallet processing failed:",
+      walletError
+    );
+  }
+}
 
       /* =========================================================
          7️⃣ CLEAR CART
          ========================================================= */
 
+      // try {
+      //   await supabase
+      //     .from("cart")
+      //     .delete()
+      //     .eq("user_id", userId);
+      //   console.log("✅ Cart cleared");
+      // } catch (cartError) {
+      //   console.error("⚠️ Cart clearing failed:", cartError);
+      // }
+
       try {
-        await supabase
-          .from("cart")
-          .delete()
-          .eq("user_id", userId);
-        console.log("✅ Cart cleared");
-      } catch (cartError) {
-        console.error("⚠️ Cart clearing failed:", cartError);
-      }
+  await clearCustomerCart();
+
+  console.log("✅ Cart cleared");
+} catch (cartError) {
+  console.error(
+    "⚠️ Cart clearing failed:",
+    cartError
+  );
+}
 
       await clearClaimedOffer();
 

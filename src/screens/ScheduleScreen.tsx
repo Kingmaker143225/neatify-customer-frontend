@@ -184,7 +184,9 @@ const parseDurationToMinutes = (duration?: any): number => {
     remaining = str.replace(/.*hr[s]?/, "");
   }
 
-  const minMatch = remaining.match(/(\d+)/);
+  // const minMatch = remaining.match(/(\d+)/);
+    const minMatch = (remaining || "").match(/(\d+)/);
+
   if (minMatch) total += Number(minMatch[1]);
 
   return Math.round(total);
@@ -511,7 +513,9 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
   };
 
   useEffect(() => {
-    const pinMatch = manualAddress.match(/\b(\d{6})\b/);
+    // const pinMatch = manualAddress.match(/\b(\d{6})\b/);
+        const pinMatch = (manualAddress || "").match(/\b(\d{6})\b/);
+
     const pinToCheck = pincode.trim() || (pinMatch ? pinMatch[1] : "");
     if (pinMatch && !pincode) {
       setPincode(pinMatch[1]);
