@@ -920,10 +920,13 @@ export type CustomerPaymentCreateOrderRequest = {
 export type CustomerPaymentCreateOrderResponse = {
   success: boolean;
   booking_id: string;
-  order_id: string;
+  // order_id: string;
+  razorpay_order_id: string;
   amount: number;
   currency: string;
-  key_id: string;
+  // key_id: string;
+  razorpay_key_id: string;
+
   message: string;
 };
 

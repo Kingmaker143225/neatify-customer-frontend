@@ -3410,6 +3410,10 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
   const [checkingPincode, setCheckingPincode] = useState<boolean>(false);
   const [isPincodeInArea, setIsPincodeInArea] = useState<boolean>(false);
   const [isHubCapacityAvailable, setIsHubCapacityAvailable] = useState<boolean>(true);
+
+  const [availabilityReason, setAvailabilityReason] = useState<string | null>(null);
+const [availabilityMessage, setAvailabilityMessage] = useState<string | null>(null);
+
   const [showEmergencyModal, setShowEmergencyModal] = useState<boolean>(false);
 
   // Policies State
@@ -3545,10 +3549,24 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
         serviceCategories
       );
 
+      // const inArea = response?.available === true;
+      // setIsPincodeServiceable(inArea);
+      // setIsPincodeInArea(inArea);
+      // setIsHubCapacityAvailable(inArea);
       const inArea = response?.available === true;
-      setIsPincodeServiceable(inArea);
-      setIsPincodeInArea(inArea);
-      setIsHubCapacityAvailable(inArea);
+const reason = response?.reason ?? null;
+const message = response?.message ?? null;
+
+setAvailabilityReason(reason);
+setAvailabilityMessage(message);
+
+// Pincode is in our service area unless backend explicitly says
+// the service area itself is unavailable.
+const serviceAreaAvailable = reason !== "SERVICE_AREA_NOT_AVAILABLE";
+
+setIsPincodeInArea(serviceAreaAvailable);
+setIsPincodeServiceable(inArea);
+setIsHubCapacityAvailable(inArea);
 
     } catch (error) {
       console.error("Pincode check failed:", error);
@@ -3892,7 +3910,8 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
         const hasStaff = count > 0;
         setIsHubCapacityAvailable(hasStaff);
         if (pincode.trim().length === 6) {
-          setIsPincodeServiceable(hasStaff);
+          // setIsPincodeServiceable(hasStaff);
+          setIsHubCapacityAvailable(hasStaff);
           if (!hasStaff && isPincodeInArea) {
             setShowEmergencyModal(true);
           }
@@ -4487,13 +4506,24 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
 
                 <View style={{ flex: 1 }}>
                   <Text style={styles.serviceStatusText}>
-                    {checkingPincode
+                    {/* {checkingPincode
                       ? t("checkout.checking")
                       : isPincodeServiceable
                         ? t("checkout.serviceAvailable")
                         : isPincodeInArea
                           ? "No Partners Available Right Now"
-                          : t("checkout.serviceNotAvailable")}
+                          : t("checkout.serviceNotAvailable")} */}
+                          {checkingPincode
+  ? t("checkout.checking")
+  : availabilityReason === "PARTNER_NOT_AVAILABLE"
+    ? "Partner Not Available"
+    : availabilityReason === "SERVICE_AREA_NOT_AVAILABLE"
+      ? "Service Not Available"
+      : isPincodeServiceable
+        ? t("checkout.serviceAvailable")
+        : isPincodeInArea
+          ? "No Partners Available Right Now"
+          : t("checkout.serviceNotAvailable")}
                   </Text>
 
                   {!checkingPincode && (

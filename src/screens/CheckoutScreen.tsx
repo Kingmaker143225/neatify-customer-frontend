@@ -2706,7 +2706,7 @@ export default function CheckoutScreen({ route }: Props) {
   const cleanPincode = pin.trim();
 
   if (!cleanPincode) {
-    setIsPincodeServiceable(false);
+    // setIsPincodeServiceable(false);
     return;
   }
 
@@ -2726,11 +2726,13 @@ export default function CheckoutScreen({ route }: Props) {
 
     const serviceCategories = checkoutServices
   .map((service: any) =>
+    service.service_type ||
     service.category ||
     service.main_category ||
     service.category_name
   )
-  .filter(Boolean);
+  .filter(Boolean)
+  .map((cat: string) => cat.trim().toUpperCase());
 
     if (serviceCategories.length === 0) {
       console.warn(
@@ -2774,7 +2776,27 @@ export default function CheckoutScreen({ route }: Props) {
   //   checkPincodeServiceable(pinToCheck);
   // }, [pincode, manualAddress]);
 
-  useEffect(() => {
+//   useEffect(() => {
+//   const safeManualAddress = manualAddress || "";
+
+//   const pinMatch =
+//     safeManualAddress.match(/\b(\d{6})\b/);
+
+//   const pinToCheck =
+//     pincode.trim() ||
+//     (pinMatch ? pinMatch[1] : "");
+
+//   if (pinMatch && !pincode) {
+//     setPincode(pinMatch[1]);
+//   }
+
+//   checkPincodeServiceable(pinToCheck);
+// }, [pincode, manualAddress]);
+useEffect(() => {
+  if (!checkoutServices || checkoutServices.length === 0) {
+    return;
+  }
+
   const safeManualAddress = manualAddress || "";
 
   const pinMatch =
@@ -2788,8 +2810,10 @@ export default function CheckoutScreen({ route }: Props) {
     setPincode(pinMatch[1]);
   }
 
-  checkPincodeServiceable(pinToCheck);
-}, [pincode, manualAddress]);
+  if (pinToCheck.length === 6) {
+    checkPincodeServiceable(pinToCheck);
+  }
+}, [pincode, manualAddress, checkoutServices]);
 
   /* ================= FETCH COUPON ================= */
 
@@ -3533,7 +3557,21 @@ export default function CheckoutScreen({ route }: Props) {
   
 
 
+    // const [datePart, timePart] = bookingDateText.split(" at ");
     const [datePart, timePart] = bookingDateText.split(" at ");
+
+const parsedDate = new Date(datePart);
+
+if (isNaN(parsedDate.getTime())) {
+  throw new Error(`Invalid booking date: ${datePart}`);
+}
+
+const bookingDateISO =
+  `${parsedDate.getFullYear()}-${String(
+    parsedDate.getMonth() + 1
+  ).padStart(2, "0")}-${String(
+    parsedDate.getDate()
+  ).padStart(2, "0")}`;
 
     let finalLat = bookingLatitude;
     let finalLng = bookingLongitude;
@@ -3573,7 +3611,9 @@ export default function CheckoutScreen({ route }: Props) {
           quantity: service.quantity || 1,
         })),
         add_ons: [],
-        booking_date: datePart,
+        // booking_date: datePart,
+        booking_date: bookingDateISO,
+
         booking_time: timePart,
         latitude: finalLat,
         longitude: finalLng,
@@ -3600,11 +3640,23 @@ export default function CheckoutScreen({ route }: Props) {
 
       console.log("✅ [Checkout] Razorpay order response:", orderResponse);
 
-      if (!orderResponse || !orderResponse.success || !orderResponse.order_id) {
-        throw new Error(orderResponse?.message || "Failed to create Razorpay order");
-      }
+      // if (!orderResponse || !orderResponse.success || !orderResponse.order_id) {
+      //   throw new Error(orderResponse?.message || "Failed to create Razorpay order");
+      // }
 
-      const razorpayOrderId = orderResponse.order_id;
+      // const razorpayOrderId = orderResponse.order_id;
+
+      if (
+  !orderResponse ||
+  !orderResponse.success ||
+  !orderResponse.razorpay_order_id
+) {
+  throw new Error(
+    orderResponse?.message || "Failed to create Razorpay order"
+  );
+}
+
+const razorpayOrderId = orderResponse.razorpay_order_id;
       console.log("✅ [Checkout] Razorpay Order ID:", razorpayOrderId);
 
       /* =========================================================
@@ -3624,7 +3676,8 @@ export default function CheckoutScreen({ route }: Props) {
       const razorpayOptions = {
         description: "Neatify Service (OPC) Private Limited",
         currency: orderResponse.currency || "INR",
-        key: orderResponse.key_id,
+        // key: orderResponse.key_id,
+        key: orderResponse.razorpay_key_id,
         amount: amountInPaise,
         name: "The Neatify Team",
         order_id: razorpayOrderId,
