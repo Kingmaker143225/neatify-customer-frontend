@@ -548,10 +548,16 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LanguageProvider } from "./src/context/LanguageContext";
 import { NotificationProvider } from "./src/context/NotificationContext";
 import { ThemeProvider, useTheme } from "./src/context/ThemeContext";
-import { supabase } from "./src/lib/supabase";
+// import { supabase } from "./src/lib/supabase";
+import {
+  getCustomerMe,
+  getCustomerProfileCompleteness,
+} from "./src/lib/backendClient";
 import AppNavigator from "./src/navigation/AppNavigator";
 import * as Notifications from 'expo-notifications';
-import { registerForPushNotificationsAsync, savePushTokenToSupabase } from "./src/utils/pushNotifications";
+// import { registerForPushNotificationsAsync, savePushTokenToSupabase } from "./src/utils/pushNotifications";
+import { registerForPushNotificationsAsync } from "./src/utils/pushNotifications";
+import { saveCustomerPushToken } from "./src/lib/backendClient";
 import { BookingCartProvider } from "./src/context/BookingCartContext";
 
 export default function App() {
@@ -560,247 +566,329 @@ export default function App() {
   const navigationRef = React.useRef<any>(null);
   const skipAuthRedirect = React.useRef(false);
 
-  const handlePushToken = async (userId: string) => {
+const handlePushToken = async () => {
+  try {
+    const token = await registerForPushNotificationsAsync();
+
+    if (token) {
+      await saveCustomerPushToken(token, "expo");
+    }
+  } catch (err) {
+    console.error("Push token registration failed:", err);
+  }
+};
+useEffect(() => {
+  let isMounted = true;
+
+  const checkCompleteness = async (
+    useNav = true
+  ): Promise<boolean> => {
     try {
-      const token = await registerForPushNotificationsAsync();
-      if (token) {
-        await savePushTokenToSupabase(userId, token);
+      const result = await getCustomerProfileCompleteness();
+
+      const isComplete =
+        result.profile_complete &&
+        result.email_confirmed;
+
+      if (!isComplete && useNav && isMounted) {
+        navigationRef.current?.reset({
+          index: 0,
+          routes: [{ name: "CompleteProfile" }],
+        });
+
+        return false;
       }
-    } catch (err) {
-      console.error("Push token registration failed:", err);
+
+      return isComplete;
+    } catch (error) {
+      console.error(
+        "❌ Backend onboarding check failed:",
+        error
+      );
+
+      return true;
     }
   };
 
-  useEffect(() => {
-    let hasCheckedOnce = false;
+  // =========================================================
+  // 1. INITIAL APP CHECK
+  // =========================================================
 
-    const checkCompleteness = async (userId: string, useNav = true): Promise<boolean> => {
-      if (!userId) return true;
-      try {
-        const { data: { user }, error: userError } = await supabase.auth.getUser();
-        
-        if (userError || !user) {
-          if (userError?.message?.includes("Refresh Token") || userError?.status === 401) {
-            console.warn("Session invalid, signing out...");
-            await supabase.auth.signOut();
-          }
-          return true;
+  const initApp = async () => {
+    try {
+      const accessToken = await AsyncStorage.getItem(
+        "customer_access_token"
+      );
+
+      console.log(
+        "🔐 Stored customer token:",
+        accessToken ? "✅ Present" : "❌ Missing"
+      );
+
+      if (accessToken) {
+        try {
+          const me = await getCustomerMe();
+
+          console.log(
+            "👤 Customer:",
+            me.email
+          );
+
+          await handlePushToken();
+
+          await checkCompleteness(false);
+        } catch (error) {
+          console.warn(
+            "⚠️ Stored customer session is invalid:",
+            error
+          );
+
+          await AsyncStorage.removeItem(
+            "customer_access_token"
+          );
         }
-
-        const { data: profile } = await supabase
-          .from("profile")
-          .select("full_name, email, phone")
-          .eq("id", user.id)
-          .maybeSingle();
-
-        const hasFullProfile = !!(profile?.full_name && profile?.email && profile?.phone);
-        const hasConfirmedIdentity =
-          !!user.email_confirmed_at ||
-          !!user.confirmed_at ||
-          user.app_metadata?.provider === "google" ||
-          (Array.isArray(user.app_metadata?.providers) && user.app_metadata.providers.includes("google"));
-
-        const isComplete = hasFullProfile && hasConfirmedIdentity;
-
-        if (!isComplete) {
-          if (useNav) {
-            navigationRef.current?.reset({
-              index: 0,
-              routes: [{ name: "CompleteProfile" }],
-            });
-          }
-          return false;
-        }
-        return true;
-      } catch (err) {
-        console.error("Onboarding check error:", err);
-        return true;
       }
-    };
 
-    // 1. Initial Launch Check
-    const initApp = async () => {
-      try {
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        
-        if (sessionError) {
-          if (sessionError.message?.includes("Refresh Token") || sessionError.status === 400) {
-            console.warn("Broken session detected on init. Clearing...");
-            await supabase.auth.signOut();
-            setInitialRoute("LocationAccess");
-            setLoading(false);
-            return;
-          }
-          throw sessionError;
-        }
+      if (isMounted) {
+        setInitialRoute("LocationAccess");
+      }
+    } catch (error) {
+      console.error(
+        "❌ App initialization failed:",
+        error
+      );
 
-        if (session?.user) {
-          handlePushToken(session.user.id);
-          hasCheckedOnce = true;
-        }
-        
+      if (isMounted) {
         setInitialRoute("LocationAccess");
-      } catch (err) {
-        console.error("App init failed:", err);
-        setInitialRoute("LocationAccess");
-      } finally {
+      }
+    } finally {
+      if (isMounted) {
         setLoading(false);
       }
-    };
-    initApp();
+    }
+  };
 
-    // 2. Auth state changes
-    const { data: listener } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log("🔐 Auth state changed:", event, session?.user?.email);
-        
-        if (event === "SIGNED_OUT") {
-          skipAuthRedirect.current = false;
-          hasCheckedOnce = false;
-          return;
+  initApp();
+
+  // =========================================================
+  // 2. DEEP LINK HANDLER
+  // =========================================================
+
+  const handleDeepLink = async ({
+    url,
+  }: {
+    url: string;
+  }) => {
+    if (!url) return;
+
+    console.log(
+      "🔗 DEEP LINK RECEIVED:",
+      url
+    );
+
+    // =====================================================
+    // GOOGLE AUTH CALLBACK
+    // =====================================================
+
+    if (url.includes("google-auth")) {
+      console.log(
+        "🔐 Processing Google auth callback..."
+      );
+
+      let accessToken: string | null = null;
+      let refreshToken: string | null = null;
+
+      const fragment = url.split("#")[1];
+
+      if (fragment) {
+        const params = new URLSearchParams(fragment);
+
+        accessToken =
+          params.get("access_token");
+
+        refreshToken =
+          params.get("refresh_token");
+      }
+
+      if (!accessToken || !refreshToken) {
+        const queryString = url.split("?")[1];
+
+        if (queryString) {
+          const params =
+            new URLSearchParams(queryString);
+
+          accessToken =
+            params.get("access_token");
+
+          refreshToken =
+            params.get("refresh_token");
         }
-        if (skipAuthRedirect.current && event === "SIGNED_IN") {
-          console.log("Skipping auth redirect (password reset in progress)");
-          return;
+      }
+
+      if (!accessToken) {
+        console.warn(
+          "⚠️ No access token found in Google callback"
+        );
+        return;
+      }
+
+      try {
+        // Store token for backend requests.
+        await AsyncStorage.setItem(
+          "customer_access_token",
+          accessToken
+        );
+
+        console.log(
+          "✅ Google access token stored"
+        );
+
+        const me = await getCustomerMe();
+
+        console.log(
+          "✅ Google customer:",
+          me.email
+        );
+
+        await handlePushToken();
+
+        const isComplete =
+          await checkCompleteness(false);
+
+        if (isComplete) {
+          navigationRef.current?.reset({
+            index: 0,
+            routes: [
+              { name: "HomeDrawer" },
+            ],
+          });
+        } else {
+          navigationRef.current?.reset({
+            index: 0,
+            routes: [
+              { name: "CompleteProfile" },
+            ],
+          });
         }
-        if (event === "SIGNED_IN" && session?.user && !hasCheckedOnce) {
-          hasCheckedOnce = true;
-          handlePushToken(session.user.id);
-          setTimeout(async () => {
-            const isComplete = await checkCompleteness(session.user.id);
-            if (isComplete) {
-              navigationRef.current?.reset({
-                index: 0,
-                routes: [{ name: "HomeDrawer" }],
-              });
+      } catch (error) {
+        console.error(
+          "❌ Google backend session failed:",
+          error
+        );
+
+        await AsyncStorage.removeItem(
+          "customer_access_token"
+        );
+      }
+
+      return;
+    }
+
+    // =====================================================
+    // PASSWORD RESET
+    // =====================================================
+
+    if (
+      url.includes("reset-password") ||
+      url.includes("type=recovery")
+    ) {
+      skipAuthRedirect.current = true;
+
+      const searchPart = url.includes("#")
+        ? url.split("#")[1]
+        : url.split("?")[1];
+
+      if (searchPart) {
+        const params =
+          new URLSearchParams(searchPart);
+
+        const accessToken =
+          params.get("access_token");
+
+        const refreshToken =
+          params.get("refresh_token");
+
+        if (accessToken && refreshToken) {
+          console.log(
+            "✅ Reset tokens detected."
+          );
+
+          setTimeout(() => {
+            navigationRef.current?.reset({
+              index: 0,
+              routes: [
+                {
+                  name: "ResetPassword",
+                  params: {
+                    access_token:
+                      accessToken,
+                    refresh_token:
+                      refreshToken,
+                  },
+                },
+              ],
+            });
+          }, 800);
+        }
+      }
+
+      return;
+    }
+  };
+
+  // =========================================================
+  // 3. DEEP LINK LISTENERS
+  // =========================================================
+
+  Linking.getInitialURL().then((url) => {
+    if (url) {
+      handleDeepLink({ url });
+    }
+  });
+
+  const subscription =
+    Linking.addEventListener(
+      "url",
+      handleDeepLink
+    );
+
+  // =========================================================
+  // 4. NOTIFICATION TAP
+  // =========================================================
+
+  const notificationResponseSubscription =
+    Notifications.addNotificationResponseReceivedListener(
+      (response) => {
+        const data =
+          response.notification.request.content
+            .data;
+
+        if (data?.screen === "bookings") {
+          navigationRef.current?.navigate(
+            "HomeDrawer",
+            {
+              screen:
+                "AuthenticatedScreens",
+              params: {
+                screen: "MainTabs",
+                params: {
+                  screen: "MyBookingsTab",
+                },
+              },
             }
-          }, 300);
+          );
         }
       }
     );
 
-    // 3. Deep link handler - SIMPLIFIED
-    const handleDeepLink = async ({ url }: { url: string }) => {
-      if (!url) return;
-      console.log("🔗 DEEP LINK RECEIVED:", url);
+  return () => {
+    isMounted = false;
 
-      // Google Auth Callback
-      if (url.includes("google-auth")) {
-        console.log("🔐 Processing Google auth callback...");
-        
-        // Extract tokens from URL
-        let accessToken = null;
-        let refreshToken = null;
-        
-        // Check fragment (#)
-        const fragment = url.split("#")[1];
-        if (fragment) {
-          const params = new URLSearchParams(fragment);
-          accessToken = params.get("access_token");
-          refreshToken = params.get("refresh_token");
-        }
-        
-        // Check query params (?)
-        if (!accessToken || !refreshToken) {
-          const queryString = url.split("?")[1];
-          if (queryString) {
-            const params = new URLSearchParams(queryString);
-            accessToken = params.get("access_token");
-            refreshToken = params.get("refresh_token");
-          }
-        }
-        
-        if (accessToken && refreshToken) {
-          console.log("🔐 Tokens found, setting session...");
-          hasCheckedOnce = false;
-          const { data, error } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken,
-          });
-          
-          if (error) {
-            console.error("❌ Session error:", error.message);
-            return;
-          }
-          
-          if (data.user) {
-            console.log("✅ Google sign-in successful for:", data.user.email);
-            handlePushToken(data.user.id);
-            const isComplete = await checkCompleteness(data.user.id);
-            if (isComplete) {
-              navigationRef.current?.reset({
-                index: 0,
-                routes: [{ name: "HomeDrawer" }],
-              });
-            } else {
-              navigationRef.current?.reset({
-                index: 0,
-                routes: [{ name: "CompleteProfile" }],
-              });
-            }
-          }
-        } else {
-          console.warn("⚠️ No tokens found in URL");
-        }
-        return;
-      }
+    subscription.remove();
 
-      // Password Reset
-      if (url.includes("reset-password") || url.includes("type=recovery")) {
-        skipAuthRedirect.current = true;
-        const searchPart = url.includes("#") ? url.split("#")[1] : url.split("?")[1];
-        if (searchPart) {
-          const params = new URLSearchParams(searchPart);
-          const accessToken = params.get("access_token");
-          const refreshToken = params.get("refresh_token");
-          if (accessToken && refreshToken) {
-            console.log("✅ Reset tokens detected. Navigating to ResetPassword...");
-            setTimeout(() => {
-              navigationRef.current?.reset({
-                index: 0,
-                routes: [
-                  {
-                    name: "ResetPassword",
-                    params: {
-                      access_token: accessToken,
-                      refresh_token: refreshToken,
-                    },
-                  },
-                ],
-              });
-            }, 800);
-          }
-        }
-      }
-    };
-
-    // Set up deep link listeners
-    Linking.getInitialURL().then((url) => {
-      if (url) handleDeepLink({ url });
-    });
-
-    const subscription = Linking.addEventListener("url", handleDeepLink);
-
-    // Listen for notification taps
-    const notificationResponseSubscription = Notifications.addNotificationResponseReceivedListener(response => {
-      const data = response.notification.request.content.data;
-      if (data?.screen === 'bookings') {
-        navigationRef.current?.navigate('HomeDrawer', {
-          screen: 'AuthenticatedScreens',
-          params: {
-            screen: 'MainTabs',
-            params: { screen: 'MyBookingsTab' }
-          }
-        });
-      }
-    });
-
-    return () => {
-      listener.subscription.unsubscribe();
-      subscription.remove();
-      notificationResponseSubscription.remove();
-    };
-  }, []);
+    notificationResponseSubscription.remove();
+  };
+}, []);
 
   const linking: any = {
     prefixes: [

@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Platform } from "react-native";
 import { Service } from "../types/service";
 
 const API_BASE_URL = (
@@ -123,7 +124,73 @@ export async function customerLogin(
 
   return result;
 }
+// =========================================================
+// CUSTOMER PUSH NOTIFICATIONS
+// =========================================================
 
+export type CustomerPushTokenRequest = {
+  token: string;
+  platform: string;
+};
+
+export type CustomerPushTokenResponse = {
+  success: boolean;
+  message: string;
+};
+
+
+// =========================================================
+// SAVE CUSTOMER PUSH TOKEN
+// =========================================================
+
+export async function saveCustomerPushToken(
+  token: string,
+  platform: string
+) {
+  console.log(
+    "📡 [Backend] saveCustomerPushToken called:",
+    {
+      platform,
+      token,
+    }
+  );
+
+  return request<CustomerPushTokenResponse>(
+    "/api/v1/customer/push-token",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        token,
+        platform,
+      }),
+    }
+  );
+}
+
+
+// =========================================================
+// REMOVE CUSTOMER PUSH TOKEN
+// =========================================================
+
+export async function removeCustomerPushToken(
+  token: string
+) {
+  console.log(
+    "📡 [Backend] removeCustomerPushToken called:",
+    token
+  );
+
+  return request<CustomerPushTokenResponse>(
+    "/api/v1/customer/push-token",
+    {
+      method: "DELETE",
+      body: JSON.stringify({
+        token,
+        platform: Platform.OS,
+      }),
+    }
+  );
+}
 // =========================================================
 // CUSTOMER PROFILE
 // =========================================================
