@@ -915,7 +915,7 @@ import {
 } from "../lib/backendClient";
 import { customerLogout } from "../lib/backendClient"; // ✅ ADD THIS IMPORT
 import { COLORS } from "../theme/colors";
-import { registerForPushNotificationsAsync, removePushTokenFromSupabase } from "../utils/pushNotifications";
+// import { registerForPushNotificationsAsync, removePushTokenFromSupabase } from "../utils/pushNotifications";
 import { generateReferralCode } from "../utils/referralUtils";
 
 /* ======================================================
@@ -1252,57 +1252,88 @@ useFocusEffect(
 
   /* ================= LOGOUT - UPDATED WITH BACKEND CALL ================= */
 
+  // const handleLogout = async () => {
+  //   showAlert({
+  //     type: "warning",
+  //     title: t("notifications.logoutTitle"),
+  //     message: t("notifications.logoutMessage"),
+  //     showCancel: true,
+  //     confirmText: t("notifications.logoutConfirm"),
+  //     onConfirm: async () => {
+  //       console.log("🔴🔴🔴 PROFILE - LOGOUT CONFIRMED 🔴🔴🔴");
+  //       try {
+  //         // 1. Call backend logout FIRST
+  //         console.log("📡 Calling customerLogout API...");
+  //         const result = await customerLogout();
+  //         console.log("✅ customerLogout result:", result);
+          
+  //         // 2. Get the current token and remove it
+  //         try {
+  //           const token = await registerForPushNotificationsAsync();
+  //           if (token) {
+  //             console.log("🗑️ Removing push token...");
+  //             await removePushTokenFromSupabase(token);
+  //             console.log("✅ Push token removed");
+  //           }
+  //         } catch (err) {
+  //           console.error("Failed to clear push token on logout:", err);
+  //         }
+          
+  //         // 3. Clear Supabase session
+  //         console.log("🔐 Signing out from Supabase...");
+  //           await customerLogout();
+  //         console.log("✅ Supabase signOut complete");
+          
+  //         // 4. Navigate to Login
+  //         navigation.reset({
+  //           index: 0,
+  //           routes: [{ name: "Login" }],
+  //         });
+          
+  //         console.log("✅ Logout complete");
+  //       } catch (error) {
+  //         console.error("❌ Logout error:", error);
+  //         // Still clear session even if backend fails
+  //         await customerLogout();
+  //         navigation.reset({
+  //           index: 0,
+  //           routes: [{ name: "Login" }],
+  //         });
+  //       }
+  //     }
+  //   });
+  // };
+
   const handleLogout = async () => {
-    showAlert({
-      type: "warning",
-      title: t("notifications.logoutTitle"),
-      message: t("notifications.logoutMessage"),
-      showCancel: true,
-      confirmText: t("notifications.logoutConfirm"),
-      onConfirm: async () => {
-        console.log("🔴🔴🔴 PROFILE - LOGOUT CONFIRMED 🔴🔴🔴");
-        try {
-          // 1. Call backend logout FIRST
-          console.log("📡 Calling customerLogout API...");
-          const result = await customerLogout();
-          console.log("✅ customerLogout result:", result);
-          
-          // 2. Get the current token and remove it
-          try {
-            const token = await registerForPushNotificationsAsync();
-            if (token) {
-              console.log("🗑️ Removing push token...");
-              await removePushTokenFromSupabase(token);
-              console.log("✅ Push token removed");
-            }
-          } catch (err) {
-            console.error("Failed to clear push token on logout:", err);
-          }
-          
-          // 3. Clear Supabase session
-          console.log("🔐 Signing out from Supabase...");
-            await customerLogout();
-          console.log("✅ Supabase signOut complete");
-          
-          // 4. Navigate to Login
-          navigation.reset({
-            index: 0,
-            routes: [{ name: "Login" }],
-          });
-          
-          console.log("✅ Logout complete");
-        } catch (error) {
-          console.error("❌ Logout error:", error);
-          // Still clear session even if backend fails
-          await customerLogout();
-          navigation.reset({
-            index: 0,
-            routes: [{ name: "Login" }],
-          });
-        }
+  showAlert({
+    type: "warning",
+    title: t("notifications.logoutTitle"),
+    message: t("notifications.logoutMessage"),
+    showCancel: true,
+    confirmText: t("notifications.logoutConfirm"),
+
+    onConfirm: async () => {
+      console.log("🔴 [Profile] LOGOUT CONFIRMED");
+
+      try {
+        console.log("📡 [Profile] Calling customerLogout...");
+
+        await customerLogout();
+
+        console.log("✅ [Profile] Logout finished");
+      } catch (error) {
+        console.error("⚠️ [Profile] Logout API error:", error);
+      } finally {
+        console.log("🚪 [Profile] Navigating to Login");
+
+        navigation.reset({
+          index: 0,
+          routes: [{ name: "Login" }],
+        });
       }
-    });
-  };
+    },
+  });
+};
 
   const onRefresh = async () => {
     setRefreshing(true);

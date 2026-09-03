@@ -359,7 +359,7 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 
 import { useLanguage } from "../context/LanguageContext";
 import { useTheme } from "../context/ThemeContext";
-import { useAuthGuard } from "../hooks/useAuthGuard";
+// import { useAuthGuard } from "../hooks/useAuthGuard";
 // import { supabase } from "../lib/supabase";
 import { getCustomerMe } from "../lib/backendClient";
 import LocationService from "../services/LocationService";
@@ -371,7 +371,7 @@ type HeaderProps = {
 export default function Header({ isCurved = false }: HeaderProps) {
   const navigation = useNavigation<any>();
   const route = useRoute();
-  const { checkAuth } = useAuthGuard();
+  // const { checkAuth } = useAuthGuard();
   const { t } = useLanguage();
   const { theme, isDark } = useTheme();
 

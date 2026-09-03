@@ -348,40 +348,91 @@ export async function updateCustomerRewards(
   );
 }
 
-export async function customerLogout() {
-  console.log("🔴🔴🔴 [Backend] customerLogout() function called 🔴🔴🔴");
-  console.log("📡 [Backend] API_BASE_URL:", API_BASE_URL);
-  console.log("📡 [Backend] Full URL:", buildUrl("/api/v1/customer/auth/logout"));
-  console.log("📡 [Backend] About to make fetch request...");
+// export async function customerLogout() {
+//   console.log("🔴🔴🔴 [Backend] customerLogout() function called 🔴🔴🔴");
+//   console.log("📡 [Backend] API_BASE_URL:", API_BASE_URL);
+//   console.log("📡 [Backend] Full URL:", buildUrl("/api/v1/customer/auth/logout"));
+//   console.log("📡 [Backend] About to make fetch request...");
   
+//   try {
+//     const result = await request<{
+//       success: boolean;
+//       message: string;
+//     }>("/api/v1/customer/auth/logout", {
+//       method: "POST",
+//     });
+    
+//     console.log("✅ [Backend] customerLogout() response:", result);
+    
+//     await AsyncStorage.removeItem(
+//       ACCESS_TOKEN_KEY
+//     );
+
+//     console.log(
+//       "✅ [Backend] Local customer token removed"
+//     );
+
+//     return result;
+//   } catch (error) {
+//     console.error("❌ [Backend] customerLogout() error:", error);
+    
+//     // Even if backend logout fails, remove the local token
+//     await AsyncStorage.removeItem(
+//       ACCESS_TOKEN_KEY
+//     );
+    
+//     throw error;
+//   }
+// }
+
+
+
+
+
+
+export async function customerLogout() {
+  console.log("🔴 [Backend] customerLogout() called");
+
+  const token = await getAccessToken();
+
+  // Already logged out locally
+  if (!token) {
+    console.log("ℹ️ [Backend] No customer token found. Already logged out.");
+    return {
+      success: true,
+      message: "Already logged out",
+    };
+  }
+
   try {
+    console.log("📡 [Backend] Calling customer logout API...");
+
     const result = await request<{
       success: boolean;
       message: string;
     }>("/api/v1/customer/auth/logout", {
       method: "POST",
     });
-    
-    console.log("✅ [Backend] customerLogout() response:", result);
-    
-    await AsyncStorage.removeItem(
-      ACCESS_TOKEN_KEY
-    );
 
-    console.log(
-      "✅ [Backend] Local customer token removed"
-    );
+    console.log("✅ [Backend] Customer logout API successful:", result);
 
     return result;
   } catch (error) {
-    console.error("❌ [Backend] customerLogout() error:", error);
-    
-    // Even if backend logout fails, remove the local token
-    await AsyncStorage.removeItem(
-      ACCESS_TOKEN_KEY
+    console.error(
+      "⚠️ [Backend] Customer logout API failed:",
+      error
     );
-    
-    throw error;
+
+    // Logout must still succeed locally.
+    return {
+      success: true,
+      message: "Logged out locally",
+    };
+  } finally {
+    // ALWAYS clear the local customer token.
+    await AsyncStorage.removeItem(ACCESS_TOKEN_KEY);
+
+    console.log("🗑️ [Backend] Customer access token removed");
   }
 }
 
